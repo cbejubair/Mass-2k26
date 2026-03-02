@@ -1,0 +1,31 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "MASS 2K26",
+  description:
+    "Traceable, revenue-auditable, entry-controlled event infrastructure",
+  icons: {
+    icon: "/logo.png",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className="antialiased min-h-screen overflow-x-hidden">
+        {children}
+      </body>
+    </html>
+  );
+}

@@ -1,0 +1,292 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { requireAuth } from "@/lib/auth";
+
+type ResolvedMember = {
+  register_number: string;
+  name: string;
+  department: string;
+  year: string;
+  class_section: string;
+};
+
+async function resolveTeamMembers(teamMembersRaw: string, isTeam: boolean) {
+  let resolvedTeamMembers: ResolvedMember[] = [];
+
+  if (!isTeam || !teamMembersRaw) return resolvedTeamMembers;
+
+  try {
+    const memberRegNos: string[] = JSON.parse(teamMembersRaw);
+    if (memberRegNos.length === 0) return resolvedTeamMembers;
+
+    const { data: foundUsers } = await supabaseAdmin
+      .from("users")
+      .select("register_number, name, department, year, class_section")
+      .in("register_number", memberRegNos);
+
+    const foundMap = new Map(
+      (foundUsers || []).map((u) => [u.register_number, u]),
+    );
+
+    resolvedTeamMembers = memberRegNos.map((regNo) => {
+      const user = foundMap.get(regNo);
+      return user
+        ? {
+            register_number: user.register_number,
+            name: user.name,
+            department: user.department,
+            year: user.year,
+            class_section: user.class_section,
+          }
+        : {
+            register_number: regNo,
+            name: "Unknown",
+            department: "",
+            year: "",
+            class_section: "",
+          };
+    });
+  } catch {
+    return [];
+  }
+
+  return resolvedTeamMembers;
+}
+
+async function uploadMusicIfProvided(
+  musicFile: File | null,
+  registerNumber: string,
+  filePrefix: string,
+) {
+  if (!musicFile || musicFile.size <= 0) return null;
+
+  if (musicFile.size > 20 * 1024 * 1024) {
+    throw new Error("Music file must be less than 20MB");
+  }
+
+  const fileExt = musicFile.name.split(".").pop();
+  const filePath = `music/${registerNumber}/${filePrefix}.${fileExt}`;
+  const fileBuffer = Buffer.from(await musicFile.arrayBuffer());
+
+  const { error: uploadErr } = await supabaseAdmin.storage
+    .from("mass")
+    .upload(filePath, fileBuffer, {
+      contentType: musicFile.type,
+      upsert: true,
+    });
+
+  if (uploadErr) {
+    console.error("Music upload error:", uploadErr);
+    throw new Error("Failed to upload music file");
+  }
+
+  const { data: urlData } = supabaseAdmin.storage
+    .from("mass")
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await requireAuth(["student"]);
+    const registerRef = session.registerNumber || session.userId;
+    const formData = await req.formData();
+    const performanceType = formData.get("performanceType") as string;
+    const participantsCount = formData.get("participantsCount") as string;
+    const leaderName = formData.get("leaderName") as string;
+    const specialRequirements = formData.get("specialRequirements") as string;
+    const musicFile = formData.get("musicFile") as File | null;
+    const isTeam = formData.get("isTeam") === "true";
+    const teamMembersRaw = formData.get("teamMembers") as string;
+
+    if (!performanceType || !participantsCount || !leaderName) {
+      return NextResponse.json(
+        {
+          error:
+            "Performance type, participants count, and leader name are required",
+        },
+        { status: 400 },
+      );
+    }
+
+    const resolvedTeamMembers = await resolveTeamMembers(
+      teamMembersRaw,
+      isTeam,
+    );
+
+    let musicFileUrl: string | null = null;
+    try {
+      musicFileUrl = await uploadMusicIfProvided(
+        musicFile,
+        registerRef,
+        "track",
+      );
+    } catch (uploadErr) {
+      const message =
+        uploadErr instanceof Error
+          ? uploadErr.message
+          : "Failed to upload music file";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("performance_registrations")
+      .insert({
+        user_id: session.userId,
+        performance_type: performanceType,
+        participants_count: parseInt(participantsCount),
+        leader_name: leaderName,
+        is_team: isTeam,
+        team_members: resolvedTeamMembers,
+        special_requirements: specialRequirements || null,
+        music_file_url: musicFileUrl,
+        approval_status: "pending",
+      });
+
+    if (error) {
+      console.error("Performance registration error:", error);
+      return NextResponse.json(
+        { error: "Failed to register performance" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+    const status =
+      message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const session = await requireAuth(["student"]);
+    const registerRef = session.registerNumber || session.userId;
+    const formData = await req.formData();
+    const performanceId = formData.get("performanceId") as string;
+    const performanceType = formData.get("performanceType") as string;
+    const participantsCount = formData.get("participantsCount") as string;
+    const leaderName = formData.get("leaderName") as string;
+    const specialRequirements = formData.get("specialRequirements") as string;
+    const musicFile = formData.get("musicFile") as File | null;
+    const isTeam = formData.get("isTeam") === "true";
+    const teamMembersRaw = formData.get("teamMembers") as string;
+
+    if (!performanceId) {
+      return NextResponse.json(
+        { error: "Performance ID is required" },
+        { status: 400 },
+      );
+    }
+
+    if (!performanceType || !participantsCount || !leaderName) {
+      return NextResponse.json(
+        {
+          error:
+            "Performance type, participants count, and leader name are required",
+        },
+        { status: 400 },
+      );
+    }
+
+    const { data: existing } = await supabaseAdmin
+      .from("performance_registrations")
+      .select("id, music_file_url")
+      .eq("id", performanceId)
+      .eq("user_id", session.userId)
+      .single();
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Performance not found" },
+        { status: 404 },
+      );
+    }
+
+    const resolvedTeamMembers = await resolveTeamMembers(
+      teamMembersRaw,
+      isTeam,
+    );
+
+    let musicFileUrl: string | null = existing.music_file_url;
+    try {
+      const uploadedMusicUrl = await uploadMusicIfProvided(
+        musicFile,
+        registerRef,
+        `track-${performanceId}`,
+      );
+      if (uploadedMusicUrl) musicFileUrl = uploadedMusicUrl;
+    } catch (uploadErr) {
+      const message =
+        uploadErr instanceof Error
+          ? uploadErr.message
+          : "Failed to upload music file";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("performance_registrations")
+      .update({
+        performance_type: performanceType,
+        participants_count: parseInt(participantsCount),
+        leader_name: leaderName,
+        is_team: isTeam,
+        team_members: isTeam ? resolvedTeamMembers : [],
+        special_requirements: specialRequirements || null,
+        music_file_url: musicFileUrl,
+        approval_status: "pending",
+      })
+      .eq("id", performanceId)
+      .eq("user_id", session.userId);
+
+    if (error) {
+      console.error("Performance update error:", error);
+      return NextResponse.json(
+        { error: "Failed to update performance" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+    const status =
+      message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function GET() {
+  try {
+    const session = await requireAuth();
+
+    if (session.role === "student") {
+      const { data } = await supabaseAdmin
+        .from("performance_registrations")
+        .select("*")
+        .eq("user_id", session.userId);
+
+      return NextResponse.json({ performances: data || [] });
+    }
+
+    // Admin or coordinator: get all (coordinator filtered by class in frontend)
+    const { data } = await supabaseAdmin
+      .from("performance_registrations")
+      .select(
+        "*, users(name, register_number, department, year, class_section)",
+      );
+
+    return NextResponse.json({ performances: data || [] });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+    const status =
+      message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
