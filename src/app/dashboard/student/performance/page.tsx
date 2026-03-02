@@ -285,6 +285,11 @@ export default function PerformancePage() {
     [],
   );
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupPreview, setLookupPreview] = useState<
+    | { found: true; user: TeamMemberResolved }
+    | { found: false; regNo: string }
+    | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -345,6 +350,7 @@ export default function PerformancePage() {
     setMemberRegNo("");
     setTeamMembers([]);
     setResolvedMembers([]);
+    setLookupPreview(null);
     setError("");
   };
 
@@ -379,10 +385,11 @@ export default function PerformancePage() {
     const regNo = memberRegNo.trim().toUpperCase();
     if (!regNo) return;
     if (teamMembers.includes(regNo)) {
-      setError("Member already added");
+      setError("This student is already added to the team.");
       return;
     }
     setLookupLoading(true);
+    setLookupPreview(null);
     setError("");
     try {
       const res = await fetch(
@@ -391,31 +398,31 @@ export default function PerformancePage() {
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
-          setTeamMembers((prev) => [...prev, regNo]);
-          setResolvedMembers((prev) => [...prev, data.user]);
-          setMemberRegNo("");
-          setParticipantsCount(String(teamMembers.length + 2));
+          setLookupPreview({ found: true, user: data.user });
           return;
         }
       }
-      setTeamMembers((prev) => [...prev, regNo]);
-      setResolvedMembers((prev) => [
-        ...prev,
-        {
-          register_number: regNo,
-          name: "Not found",
-          department: "",
-          year: "",
-          class_section: "",
-        },
-      ]);
-      setMemberRegNo("");
-      setParticipantsCount(String(teamMembers.length + 2));
+      // User not found — show error preview, do NOT add
+      setLookupPreview({ found: false, regNo });
     } catch {
-      setError("Failed to lookup member");
+      setError("Failed to lookup student. Please try again.");
     } finally {
       setLookupLoading(false);
     }
+  };
+
+  const confirmAddMember = () => {
+    if (!lookupPreview || !lookupPreview.found) return;
+    const { user } = lookupPreview;
+    setTeamMembers((prev) => [...prev, user.register_number]);
+    setResolvedMembers((prev) => [...prev, user]);
+    setParticipantsCount(String(teamMembers.length + 2));
+    setMemberRegNo("");
+    setLookupPreview(null);
+  };
+
+  const dismissPreview = () => {
+    setLookupPreview(null);
   };
 
   const removeMember = (index: number) => {
@@ -662,7 +669,11 @@ export default function PerformancePage() {
                   <div className="flex gap-2">
                     <Input
                       value={memberRegNo}
-                      onChange={(e) => setMemberRegNo(e.target.value)}
+                      onChange={(e) => {
+                        setMemberRegNo(e.target.value);
+                        setLookupPreview(null);
+                        setError("");
+                      }}
                       placeholder="Register number…"
                       className="bg-background/60"
                       onKeyDown={(e) => {
@@ -677,16 +688,85 @@ export default function PerformancePage() {
                       variant="secondary"
                       size="sm"
                       onClick={addTeamMember}
-                      disabled={lookupLoading}
+                      disabled={lookupLoading || !memberRegNo.trim()}
                       className="shrink-0 px-4"
                     >
                       {lookupLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        "Add"
+                        "Search"
                       )}
                     </Button>
                   </div>
+
+                  {/* Lookup preview */}
+                  {lookupPreview && (
+                    <div
+                      className={`rounded-lg border p-3 ${
+                        lookupPreview.found
+                          ? "border-emerald-500/30 bg-emerald-500/10"
+                          : "border-red-500/30 bg-red-500/10"
+                      }`}
+                    >
+                      {lookupPreview.found ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-sm font-bold text-emerald-300 shrink-0">
+                            {lookupPreview.user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-emerald-300">
+                              {lookupPreview.user.name}
+                            </p>
+                            <p className="text-[11px] text-emerald-400/70">
+                              {lookupPreview.user.register_number}
+                              {lookupPreview.user.department &&
+                                ` · ${lookupPreview.user.department} ${lookupPreview.user.year}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={confirmAddMember}
+                              className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              Add
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={dismissPreview}
+                              className="p-1 rounded text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
+                            <X className="h-4 w-4 text-red-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-red-300">
+                              Student not found
+                            </p>
+                            <p className="text-[11px] text-red-400/70">
+                              {lookupPreview.regNo} is not a registered student.
+                              Only registered students can be added.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={dismissPreview}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {resolvedMembers.length > 0 && (
                     <div className="space-y-2">
