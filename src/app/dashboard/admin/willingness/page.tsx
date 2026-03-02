@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -11,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 interface StudentWillingness {
   id: string;
@@ -41,11 +43,13 @@ export default function AdminWillingnessPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const withForm = students.filter(
-    (student) => student.event_registrations?.[0],
+  // Only show students who submitted the form AND are willing to coordinate
+  const willing = students.filter(
+    (student) =>
+      student.event_registrations?.[0]?.willing_to_coordinate === true,
   );
 
-  const filtered = withForm.filter((student) => {
+  const filtered = willing.filter((student) => {
     const reg = student.event_registrations?.[0];
     const roles = reg?.interested_roles?.join(" ") || "";
 
@@ -58,9 +62,27 @@ export default function AdminWillingnessPage() {
     );
   });
 
-  const willingCount = withForm.filter(
-    (student) => student.event_registrations?.[0]?.willing_to_coordinate,
-  ).length;
+  const exportExcel = () => {
+    const rows = filtered.map((student, i) => {
+      const reg = student.event_registrations[0];
+      return {
+        "S.No": i + 1,
+        "Register No": student.register_number,
+        Name: student.name,
+        Department: student.department,
+        Year: student.year,
+        Section: student.class_section,
+        "Supports Event": reg.support_status ? "Yes" : "No",
+        "Interested Roles": reg.interested_roles?.join(", ") || "",
+        Remarks: reg.remarks || "",
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Willing Coordinators");
+    XLSX.writeFile(wb, "willing_coordinators.xlsx");
+  };
 
   if (loading) {
     return (
@@ -76,17 +98,28 @@ export default function AdminWillingnessPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Willingness Details</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {withForm.length} form(s) submitted • {willingCount} willing to
-            coordinate
+            {willing.length} willing to coordinate
           </p>
         </div>
-        <Input
-          type="text"
-          placeholder="Search name, register no, department, role..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-80"
-        />
+        <div className="flex gap-2 items-center">
+          <Input
+            type="text"
+            placeholder="Search name, register no, department, role..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full sm:w-72"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportExcel}
+            disabled={filtered.length === 0}
+            className="flex-shrink-0"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-border overflow-x-auto">
@@ -98,7 +131,6 @@ export default function AdminWillingnessPage() {
               <TableHead>Dept</TableHead>
               <TableHead>Year/Sec</TableHead>
               <TableHead>Support</TableHead>
-              <TableHead>Willing</TableHead>
               <TableHead>Interested Roles</TableHead>
               <TableHead>Remarks</TableHead>
             </TableRow>
@@ -121,15 +153,6 @@ export default function AdminWillingnessPage() {
                       variant={reg.support_status ? "default" : "secondary"}
                     >
                       {reg.support_status ? "Yes" : "No"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        reg.willing_to_coordinate ? "default" : "secondary"
-                      }
-                    >
-                      {reg.willing_to_coordinate ? "Yes" : "No"}
                     </Badge>
                   </TableCell>
                   <TableCell>

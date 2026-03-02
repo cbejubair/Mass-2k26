@@ -3,6 +3,24 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
 
+async function fetchWithLogs(userId: string) {
+  const { data: qr } = await supabaseAdmin
+    .from("entry_qr")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  if (!qr) return null;
+
+  const { data: logs } = await supabaseAdmin
+    .from("entry_scan_logs")
+    .select("action, entry_number, scanned_at")
+    .eq("qr_id", qr.id)
+    .order("scanned_at", { ascending: true });
+
+  return { ...qr, scan_logs: logs ?? [] };
+}
+
 export async function POST() {
   try {
     const session = await requireAuth(["student"]);
@@ -22,15 +40,8 @@ export async function POST() {
     }
 
     // Get or create QR
-    const { data: existingQr } = await supabaseAdmin
-      .from("entry_qr")
-      .select("*")
-      .eq("user_id", session.userId)
-      .single();
-
-    if (existingQr) {
-      return NextResponse.json({ qr: existingQr });
-    }
+    const existing = await fetchWithLogs(session.userId);
+    if (existing) return NextResponse.json({ qr: existing });
 
     const { data: createdQr, error: createError } = await supabaseAdmin
       .from("entry_qr")
@@ -38,6 +49,7 @@ export async function POST() {
         user_id: session.userId,
         qr_token: uuidv4(),
         is_active: true,
+        total_entries: 0,
       })
       .select("*")
       .single();
@@ -49,7 +61,7 @@ export async function POST() {
       );
     }
 
-    return NextResponse.json({ qr: createdQr });
+    return NextResponse.json({ qr: { ...createdQr, scan_logs: [] } });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";
@@ -62,14 +74,8 @@ export async function POST() {
 export async function GET() {
   try {
     const session = await requireAuth(["student"]);
-
-    const { data } = await supabaseAdmin
-      .from("entry_qr")
-      .select("*")
-      .eq("user_id", session.userId)
-      .single();
-
-    return NextResponse.json({ qr: data || null });
+    const qr = await fetchWithLogs(session.userId);
+    return NextResponse.json({ qr });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";

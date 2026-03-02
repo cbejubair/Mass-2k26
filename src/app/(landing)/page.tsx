@@ -17,6 +17,7 @@ import GridImages from "@/components/landing/GridImages";
 import CTASection from "@/components/landing/CTASection";
 import Sliders from "@/components/landing/Sliders";
 import MusicCD from "@/components/landing/MusicCD";
+import CoordinatorsSection from "@/components/landing/coordinators";
 
 /* ------------------------------------------------------------------ */
 /*  Floating particles background                                      */
@@ -207,7 +208,7 @@ export default function LandingPage() {
 
             {/* Subtitle */}
             <p className="mt-5 text-sm md:text-base text-neutral-400 max-w-xl leading-relaxed px-4">
-              Immerse yourself in the ultimate cultural extravaganza — live
+              Immerse yourself in the ultimate cultural extravaganza live
               performances, electrifying competitions, art showcases, and
               unforgettable moments.
             </p>
@@ -264,6 +265,9 @@ export default function LandingPage() {
 
       {/* ===================== Sponsors ===================== */}
       <SponsorsMarquee />
+
+      {/* ===================== Coordinators ===================== */}
+      <CoordinatorsSection />
 
       {/* ===================== Gallery ===================== */}
       {/* <GridImages /> */}

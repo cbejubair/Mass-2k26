@@ -1,18 +1,46 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+  Loader2,
+  CheckCircle2,
+  Pencil,
+  Heart,
+  Users,
+  Mic2,
+  Camera,
+  DollarSign,
+  UtensilsCrossed,
+  Wrench,
+  ClipboardList,
+  MessageSquare,
+  AlertCircle,
+  HandHeart,
+  X,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
+
+// ─── Role catalogue ──────────────────────────────────────────────────────────
 
 const ROLE_DETAILS = [
   {
     key: "finance-coordinator",
     title: "Finance Coordinator",
+    icon: DollarSign,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10 border-emerald-500/20",
     points: [
       "Track student payments (UPI records).",
       "Maintain income and expense sheets.",
@@ -23,6 +51,9 @@ const ROLE_DETAILS = [
   {
     key: "multimedia-team",
     title: "Multimedia Team (Videography & Photography)",
+    icon: Camera,
+    color: "text-sky-400",
+    bg: "bg-sky-500/10 border-sky-500/20",
     points: [
       "Capture promotional content before the event.",
       "Cover performances, crowd moments, and backstage.",
@@ -33,6 +64,9 @@ const ROLE_DETAILS = [
   {
     key: "emcee-mc-department",
     title: "Emcee (MC) Department",
+    icon: Mic2,
+    color: "text-violet-400",
+    bg: "bg-violet-500/10 border-violet-500/20",
     points: [
       "Anchor the event and engage the audience.",
       "Coordinate event flow with the technical and performance teams.",
@@ -43,6 +77,9 @@ const ROLE_DETAILS = [
   {
     key: "event-day-volunteers",
     title: "Event Day Volunteers",
+    icon: Users,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10 border-blue-500/20",
     points: [
       "Assist participants and guests.",
       "Manage crowd movement and seating.",
@@ -53,6 +90,9 @@ const ROLE_DETAILS = [
   {
     key: "food-refreshment-volunteers",
     title: "Food & Refreshment Volunteers",
+    icon: UtensilsCrossed,
+    color: "text-orange-400",
+    bg: "bg-orange-500/10 border-orange-500/20",
     points: [
       "Coordinate with food vendors.",
       "Manage distribution counters.",
@@ -63,6 +103,9 @@ const ROLE_DETAILS = [
   {
     key: "technical-team",
     title: "Technical Team",
+    icon: Wrench,
+    color: "text-rose-400",
+    bg: "bg-rose-500/10 border-rose-500/20",
     points: [
       "Assist with stage setup and equipment arrangement.",
       "Monitor sound systems, microphones, DJ setup, and lighting.",
@@ -72,7 +115,10 @@ const ROLE_DETAILS = [
   },
   {
     key: "registration-entry-management",
-    title: "Registration & Entry Management Team",
+    title: "Registration & Entry Management",
+    icon: ClipboardList,
+    color: "text-amber-400",
+    bg: "bg-amber-500/10 border-amber-500/20",
     points: [
       "Verify student registrations and payment confirmation.",
       "Manage entry points and crowd control at gates.",
@@ -82,35 +128,159 @@ const ROLE_DETAILS = [
   },
 ] as const;
 
-export default function RegisterPage() {
-  const [supportStatus, setSupportStatus] = useState(false);
-  const [willingToCoordinate, setWillingToCoordinate] = useState(false);
+// ─── Summary row ──────────────────────────────────────────────────────────────
+
+function SummaryRow({
+  icon: Icon,
+  question,
+  children,
+  accent = "bg-purple-500/15 border-purple-500/20 text-purple-300",
+}: {
+  icon: React.ElementType;
+  question: string;
+  children: React.ReactNode;
+  accent?: string;
+}) {
+  return (
+    <div className="flex items-start gap-4 py-4">
+      <div
+        className={`flex-shrink-0 w-9 h-9 rounded-lg border flex items-center justify-center ${accent}`}
+      >
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground mb-1">{question}</p>
+        <div>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Yes / No toggle card ─────────────────────────────────────────────────────
+
+function YesNoCard({
+  question,
+  description,
+  value,
+  onChange,
+}: {
+  question: string;
+  description?: string;
+  value: boolean | null;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="font-medium text-sm">{question}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        )}
+      </div>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-3 text-sm font-medium transition-all ${
+            value === true
+              ? "border-emerald-500 bg-emerald-500/15 text-emerald-300"
+              : "border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:bg-white/10"
+          }`}
+        >
+          <ThumbsUp className="w-4 h-4" />
+          Yes
+          {value === true && <CheckCircle2 className="w-3.5 h-3.5 ml-1" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 py-3 text-sm font-medium transition-all ${
+            value === false
+              ? "border-rose-500 bg-rose-500/15 text-rose-300"
+              : "border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:bg-white/10"
+          }`}
+        >
+          <ThumbsDown className="w-4 h-4" />
+          No
+          {value === false && <X className="w-3.5 h-3.5 ml-1" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function WillingnessPage() {
+  const [supportStatus, setSupportStatus] = useState<boolean | null>(null);
+  const [willingToCoordinate, setWillingToCoordinate] = useState<
+    boolean | null
+  >(null);
   const [interestedRoles, setInterestedRoles] = useState<string[]>([]);
   const [remarks, setRemarks] = useState("");
+
+  const [pageLoading, setPageLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const router = useRouter();
+  const [existing, setExisting] = useState(false);
+  const [editing, setEditing] = useState(false);
 
-  const toggleRole = (role: string) => {
+  // ── load existing submission ────────────────────────────────────────────────
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/register");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.registration) {
+            const r = data.registration;
+            setSupportStatus(r.support_status ?? null);
+            setWillingToCoordinate(r.willing_to_coordinate ?? null);
+            setInterestedRoles(r.interested_roles ?? []);
+            setRemarks(r.remarks ?? "");
+            setExisting(true);
+          }
+        }
+      } catch {
+        // silently continue — form will start fresh
+      } finally {
+        setPageLoading(false);
+      }
+    })();
+  }, []);
+
+  // ── helpers ─────────────────────────────────────────────────────────────────
+
+  const toggleRole = (key: string) => {
     setInterestedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+      prev.includes(key) ? prev.filter((r) => r !== key) : [...prev, key],
     );
   };
 
+  const roleMeta = (key: string) =>
+    ROLE_DETAILS.find((r) => r.key === key) ?? null;
+
+  // ── submit ──────────────────────────────────────────────────────────────────
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (supportStatus === null || willingToCoordinate === null) {
+      setError("Please answer both questions before submitting.");
+      return;
+    }
     setLoading(true);
     setError("");
 
     try {
+      const method = existing ? "PATCH" : "POST";
       const res = await fetch("/api/register", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supportStatus,
           willingToCoordinate,
-          interestedRoles,
+          interestedRoles: willingToCoordinate ? interestedRoles : [],
           remarks,
         }),
       });
@@ -118,138 +288,364 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error);
+        setError(data.error ?? "Submission failed.");
         return;
       }
 
-      setSuccess(true);
-      setTimeout(() => router.push("/dashboard/student"), 2000);
+      setExisting(true);
+      setEditing(false);
     } catch {
-      setError("Network error");
+      setError("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
+  // ── page loading ─────────────────────────────────────────────────────────────
+
+  if (pageLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <CheckCircle2 className="h-12 w-12 text-green-400 mb-4" />
-        <h2 className="text-xl font-bold">Form Submitted Successfully!</h2>
-        <p className="text-muted-foreground text-sm mt-2">
-          Redirecting to dashboard...
-        </p>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
+  // ── read-only summary ─────────────────────────────────────────────────────────
+
+  if (existing && !editing) {
+    const selectedRoles = interestedRoles
+      .map((k) => roleMeta(k))
+      .filter(Boolean);
+
+    return (
+      <div className="max-w-xl mx-auto space-y-6">
+        {/* header */}
+        <div>
+          <h1 className="text-2xl font-bold">Coordinator Willingness</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Your response has been recorded for MASS 2K26.
+          </p>
+        </div>
+
+        {/* summary card */}
+        <Card className="border border-white/10 bg-card/60 backdrop-blur">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Response Summary</CardTitle>
+                <CardDescription className="text-xs">
+                  Submitted — MASS 2K26
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+              >
+                Submitted
+              </Badge>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-3 text-xs"
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="w-3 h-3 mr-1.5" />
+                Edit
+              </Button>
+            </div>
+          </CardHeader>
+
+          <Separator className="bg-white/5" />
+
+          <CardContent className="divide-y divide-white/5 px-6 py-0">
+            {/* support */}
+            <SummaryRow
+              icon={Heart}
+              question="Supporting MASS 2K26"
+              accent="bg-rose-500/10 border-rose-500/20 text-rose-400"
+            >
+              <Badge
+                variant="outline"
+                className={
+                  supportStatus
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                    : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+                }
+              >
+                {supportStatus ? "Yes, I support" : "Not supporting"}
+              </Badge>
+            </SummaryRow>
+
+            {/* willingness */}
+            <SummaryRow
+              icon={HandHeart}
+              question="Willing to coordinate"
+              accent="bg-violet-500/10 border-violet-500/20 text-violet-400"
+            >
+              <Badge
+                variant="outline"
+                className={
+                  willingToCoordinate
+                    ? "border-violet-500/30 bg-violet-500/10 text-violet-400"
+                    : "border-zinc-600/50 bg-zinc-700/20 text-zinc-400"
+                }
+              >
+                {willingToCoordinate ? "Yes, willing" : "Not willing"}
+              </Badge>
+            </SummaryRow>
+
+            {/* roles */}
+            {willingToCoordinate && (
+              <SummaryRow
+                icon={Users}
+                question="Interested roles"
+                accent="bg-blue-500/10 border-blue-500/20 text-blue-400"
+              >
+                {selectedRoles.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">
+                    No roles selected
+                  </span>
+                ) : (
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedRoles.map((r) => {
+                      if (!r) return null;
+                      const Icon = r.icon;
+                      return (
+                        <Badge
+                          key={r.key}
+                          variant="outline"
+                          className={`${r.bg} ${r.color} border gap-1.5`}
+                        >
+                          <Icon className="w-3 h-3" />
+                          {r.title}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                )}
+              </SummaryRow>
+            )}
+
+            {/* remarks */}
+            {remarks && (
+              <SummaryRow
+                icon={MessageSquare}
+                question="Remarks"
+                accent="bg-amber-500/10 border-amber-500/20 text-amber-400"
+              >
+                <p className="text-sm font-medium leading-relaxed">{remarks}</p>
+              </SummaryRow>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── editable form ─────────────────────────────────────────────────────────────
+
   return (
     <div className="max-w-xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">
-          Event Coordinator Willingness Form
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Express your interest in coordinating MASS 2K26
-        </p>
+      {/* header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Coordinator Willingness Form</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Let us know your interest in supporting MASS 2K26.
+          </p>
+        </div>
+        {editing && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-xs mt-1"
+            onClick={() => {
+              setEditing(false);
+              setError("");
+            }}
+          >
+            <X className="w-3 h-3 mr-1.5" />
+            Cancel
+          </Button>
+        )}
       </div>
 
-      <Card>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-red-400">
-                {error}
+      {/* error banner */}
+      {error && (
+        <div className="flex items-start gap-3 rounded-xl border-l-4 border-rose-500 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* ── Step 1: Support & Coordination ───────────────────────────────── */}
+        <Card className="border border-white/10 bg-card/60 backdrop-blur">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                <Heart className="w-5 h-5 text-rose-400" />
               </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id="support"
-                checked={supportStatus}
-                onCheckedChange={(v) => setSupportStatus(!!v)}
-              />
-              <Label htmlFor="support">I support the MASS 2K26 event</Label>
+              <div>
+                <CardTitle className="text-base">Your Involvement</CardTitle>
+                <CardDescription className="text-xs">
+                  Tell us how you&apos;d like to be part of MASS 2K26
+                </CardDescription>
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <YesNoCard
+              question="Do you support MASS 2K26?"
+              description="Express your general support for this cultural event."
+              value={supportStatus}
+              onChange={setSupportStatus}
+            />
+            <Separator className="bg-white/5" />
+            <YesNoCard
+              question="Are you willing to coordinate?"
+              description="Coordinators take an active role in managing event activities."
+              value={willingToCoordinate}
+              onChange={setWillingToCoordinate}
+            />
+          </CardContent>
+        </Card>
 
-            <div className="flex items-center gap-3">
-              <Checkbox
-                id="coordinate"
-                checked={willingToCoordinate}
-                onCheckedChange={(v) => setWillingToCoordinate(!!v)}
-              />
-              <Label htmlFor="coordinate">
-                I am willing to help coordinate
-              </Label>
-            </div>
-
-            {willingToCoordinate && (
-              <div className="space-y-3 rounded-lg border border-border p-4 bg-muted/30">
-                <Label className="text-sm font-semibold">
-                  Coordinator Roles (select all that apply)
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Choose roles you are willing to take. Responsibilities are
-                  listed under each role.
-                </p>
-                <div className="space-y-3">
-                  {ROLE_DETAILS.map((role) => (
-                    <div
-                      key={role.key}
-                      className="rounded-lg border border-border bg-background p-3"
-                    >
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          id={`role-${role.key}`}
-                          checked={interestedRoles.includes(role.title)}
-                          onCheckedChange={() => toggleRole(role.title)}
-                        />
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor={`role-${role.key}`}
-                            className="text-sm font-semibold cursor-pointer"
-                          >
-                            {role.title}
-                          </Label>
-                          <ul className="list-disc pl-5 space-y-1 text-xs text-muted-foreground">
-                            {role.points.map((point) => (
-                              <li key={point}>{point}</li>
-                            ))}
-                          </ul>
+        {/* ── Step 2: Role selection (only if willing) ──────────────────────── */}
+        {willingToCoordinate === true && (
+          <Card className="border border-white/10 bg-card/60 backdrop-blur">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">
+                    Select Interested Roles
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Choose one or more roles you are comfortable with.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {ROLE_DETAILS.map((role) => {
+                const Icon = role.icon;
+                const selected = interestedRoles.includes(role.key);
+                return (
+                  <button
+                    key={role.key}
+                    type="button"
+                    onClick={() => toggleRole(role.key)}
+                    className={`w-full text-left rounded-xl border-2 p-4 transition-all ${
+                      selected
+                        ? `${role.bg} border-current`
+                        : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            selected ? role.bg : "bg-white/5"
+                          }`}
+                        >
+                          <Icon
+                            className={`w-4 h-4 ${selected ? role.color : "text-muted-foreground"}`}
+                          />
                         </div>
+                        <span
+                          className={`font-medium text-sm ${selected ? role.color : "text-foreground"}`}
+                        >
+                          {role.title}
+                        </span>
                       </div>
+                      {selected && (
+                        <CheckCircle2
+                          className={`w-4 h-4 flex-shrink-0 mt-0.5 ${role.color}`}
+                        />
+                      )}
                     </div>
-                  ))}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Selected: {interestedRoles.length}
-                </div>
+
+                    {selected && (
+                      <ul className="mt-3 space-y-1 pl-11">
+                        {role.points.map((pt, i) => (
+                          <li
+                            key={i}
+                            className="text-xs text-muted-foreground flex gap-2"
+                          >
+                            <span className={`mt-0.5 ${role.color}`}>•</span>
+                            {pt}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── Remarks ───────────────────────────────────────────────────────── */}
+        <Card className="border border-white/10 bg-card/60 backdrop-blur">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-amber-400" />
               </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Remarks (optional)</Label>
-              <Textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder="Any additional comments..."
-                className="min-h-[80px]"
-              />
+              <div>
+                <CardTitle className="text-base">Remarks</CardTitle>
+                <CardDescription className="text-xs">
+                  Optional — any additional comments or availability notes
+                </CardDescription>
+              </div>
             </div>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              placeholder="e.g. I'm available after 2 PM on event day..."
+              rows={3}
+              className="resize-none bg-white/5 border-white/10 text-sm"
+            />
+          </CardContent>
+        </Card>
 
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Willingness Form"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        {/* ── Submit ────────────────────────────────────────────────────────── */}
+        <Button
+          type="submit"
+          disabled={
+            loading || supportStatus === null || willingToCoordinate === null
+          }
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving…
+            </>
+          ) : existing ? (
+            "Update Response"
+          ) : (
+            "Submit Response"
+          )}
+        </Button>
+
+        {(supportStatus === null || willingToCoordinate === null) && (
+          <p className="text-center text-xs text-muted-foreground">
+            Answer both questions above to enable submission.
+          </p>
+        )}
+      </form>
     </div>
   );
 }

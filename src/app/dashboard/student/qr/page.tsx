@@ -2,15 +2,29 @@
 
 import { useEffect, useState } from "react";
 import QRDisplay from "@/components/qr/QRDisplay";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   AlertTriangle,
-  CheckCircle2,
   Lock,
   LogIn,
   LogOut,
+  History,
 } from "lucide-react";
+
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+interface ScanLog {
+  action: "check_in" | "check_out";
+  entry_number: number;
+  scanned_at: string;
+}
 
 export default function QRTicketPage() {
   const [qr, setQr] = useState<{
@@ -18,14 +32,13 @@ export default function QRTicketPage() {
     is_active: boolean;
     checked_in_at: string | null;
     checked_out_at: string | null;
+    total_entries: number;
+    scan_logs: ScanLog[];
   } | null>(null);
   const [userInfo, setUserInfo] = useState<{
     name: string;
     registerNumber: string;
-  }>({
-    name: "",
-    registerNumber: "",
-  });
+  }>({ name: "", registerNumber: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -34,7 +47,6 @@ export default function QRTicketPage() {
       try {
         const res = await fetch("/api/qr/generate", { method: "POST" });
         const data = await res.json();
-
         if (data.qr) {
           setQr(data.qr);
         } else if (data.error) {
@@ -48,7 +60,6 @@ export default function QRTicketPage() {
         setLoading(false);
       }
     }
-
     setUserInfo({ name: "Student", registerNumber: "" });
     fetchQR();
   }, []);
@@ -61,8 +72,14 @@ export default function QRTicketPage() {
     );
   }
 
-  const isCheckedIn = !!qr?.checked_in_at;
-  const isCheckedOut = !!qr?.checked_out_at;
+  const isInsideNow = !!qr?.checked_in_at && !qr?.checked_out_at;
+  const entryCount = qr?.total_entries ?? 0;
+  const logs = qr?.scan_logs ?? [];
+
+  // Group logs by entry_number for display
+  const entryCycles = Array.from(new Set(logs.map((l) => l.entry_number))).sort(
+    (a, b) => a - b,
+  );
 
   return (
     <div className="max-w-md mx-auto space-y-4 sm:space-y-6">
@@ -73,6 +90,7 @@ export default function QRTicketPage() {
         </p>
       </div>
 
+      {/* Error state */}
       {error && (
         <Card>
           <CardContent className="p-6 text-center">
@@ -86,53 +104,7 @@ export default function QRTicketPage() {
         </Card>
       )}
 
-      {qr && qr.is_active && (
-        <Card>
-          <CardContent className="p-6">
-            {isCheckedIn && isCheckedOut ? (
-              <div className="text-center space-y-3">
-                <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto" />
-                <h3 className="font-semibold text-lg">Visit Complete</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p className="flex items-center justify-center gap-2">
-                    <LogIn className="h-4 w-4 text-green-400" />
-                    Checked in: {new Date(qr.checked_in_at!).toLocaleString()}
-                  </p>
-                  <p className="flex items-center justify-center gap-2">
-                    <LogOut className="h-4 w-4 text-blue-400" />
-                    Checked out: {new Date(qr.checked_out_at!).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ) : isCheckedIn ? (
-              <div className="text-center space-y-3">
-                <LogIn className="h-10 w-10 text-green-400 mx-auto" />
-                <h3 className="font-semibold text-lg">Checked In</h3>
-                <p className="text-muted-foreground text-sm">
-                  Since: {new Date(qr.checked_in_at!).toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Show this QR again at the exit gate for check-out.
-                </p>
-                <div className="pt-2">
-                  <QRDisplay
-                    token={qr.qr_token}
-                    studentName={userInfo.name}
-                    registerNumber={userInfo.registerNumber}
-                  />
-                </div>
-              </div>
-            ) : (
-              <QRDisplay
-                token={qr.qr_token}
-                studentName={userInfo.name}
-                registerNumber={userInfo.registerNumber}
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Inactive */}
       {qr && !qr.is_active && (
         <Card>
           <CardContent className="p-6 text-center">
@@ -143,6 +115,101 @@ export default function QRTicketPage() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Active QR */}
+      {qr && qr.is_active && (
+        <>
+          {/* Status banner */}
+          <div
+            className={`rounded-xl border px-4 py-3 flex items-center gap-3 text-sm font-medium ${
+              isInsideNow
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : "border-white/10 bg-white/5 text-muted-foreground"
+            }`}
+          >
+            {isInsideNow ? (
+              <LogIn className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+            )}
+            <span>
+              {isInsideNow
+                ? `Currently inside — ${ordinal(entryCount)} entry since ${new Date(qr.checked_in_at!).toLocaleTimeString()}`
+                : entryCount > 0
+                  ? `Currently outside — ${entryCount} entr${entryCount === 1 ? "y" : "ies"} recorded`
+                  : "Not yet checked in"}
+            </span>
+          </div>
+
+          {/* QR code */}
+          <Card>
+            <CardContent className="p-6">
+              <QRDisplay
+                token={qr.qr_token}
+                studentName={userInfo.name}
+                registerNumber={userInfo.registerNumber}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Entry history */}
+          {logs.length > 0 && (
+            <Card className="border border-white/10">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <History className="w-4 h-4 text-muted-foreground" />
+                  Entry History
+                  <Badge variant="outline" className="ml-auto text-xs">
+                    {entryCount} {entryCount === 1 ? "entry" : "entries"}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <Separator className="bg-white/5" />
+              <CardContent className="px-4 py-2 divide-y divide-white/5">
+                {entryCycles.map((cycle) => {
+                  const checkIn = logs.find(
+                    (l) => l.entry_number === cycle && l.action === "check_in",
+                  );
+                  const checkOut = logs.find(
+                    (l) => l.entry_number === cycle && l.action === "check_out",
+                  );
+                  return (
+                    <div key={cycle} className="py-3 space-y-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {ordinal(cycle)} Entry
+                      </p>
+                      {checkIn && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <LogIn className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                          <span className="text-emerald-400">Entered</span>
+                          <span className="text-muted-foreground ml-auto">
+                            {new Date(checkIn.scanned_at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      )}
+                      {checkOut && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <LogOut className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                          <span className="text-blue-400">Exited</span>
+                          <span className="text-muted-foreground ml-auto">
+                            {new Date(checkOut.scanned_at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      )}
+                      {checkIn && !checkOut && (
+                        <div className="flex items-center gap-2 text-xs text-emerald-400/70">
+                          <span className="w-3.5" />
+                          <span>Still inside</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );

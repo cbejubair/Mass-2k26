@@ -199,18 +199,25 @@ export default function LoginPage() {
                   )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="regNum">Register Number</Label>
+                    <Label htmlFor="regNum">
+                      Register Number (start with 7125)
+                    </Label>
                     <Input
                       id="regNum"
                       value={registerNumber}
                       onChange={(e) => {
-                        setRegisterNumber(e.target.value);
+                        const value = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 12);
+                        setRegisterNumber(value);
                         setNeedsDetails(false);
                         setError("");
                       }}
-                      placeholder="e.g. 22CS101"
+                      placeholder="e.g. 712525000000"
+                      pattern="7125\d{8}"
                       required
                       autoComplete="username"
+                      maxLength={12}
                     />
                   </div>
 

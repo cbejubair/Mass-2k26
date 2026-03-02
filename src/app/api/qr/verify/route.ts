@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
 
+/** Ordinal label: 1 → "1st", 2 → "2nd", etc. */
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(["admin", "class_coordinator"]);
@@ -20,18 +27,15 @@ export async function POST(req: NextRequest) {
       const eventEnd = new Date(eventDate);
       eventEnd.setDate(eventEnd.getDate() + 1);
       if (new Date() > eventEnd) {
-        return NextResponse.json(
-          {
-            valid: false,
-            action: "invalid",
-            message: "Event has ended. QR codes are no longer valid.",
-          },
-          { status: 200 },
-        );
+        return NextResponse.json({
+          valid: false,
+          action: "invalid",
+          message: "Event has ended. QR codes are no longer valid.",
+        });
       }
     }
 
-    // Lookup QR entry
+    // Lookup QR entry + student info
     const { data: qrEntry, error } = await supabaseAdmin
       .from("entry_qr")
       .select(
@@ -58,48 +62,75 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Determine action based on current check-in/check-out state
-    if (!qrEntry.checked_in_at) {
-      // First scan → CHECK IN
-      await supabaseAdmin
-        .from("entry_qr")
-        .update({
-          checked_in_at: now,
-          checked_in_by: session.userId,
-        })
-        .eq("id", qrEntry.id);
+    // Count completed exits to determine current entry number
+    const { count: completedExits } = await supabaseAdmin
+      .from("entry_scan_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("qr_id", qrEntry.id)
+      .eq("action", "check_out");
 
-      return NextResponse.json({
-        valid: true,
-        action: "checked_in",
-        message: "Check-in successful!",
-        student: qrEntry.users,
-      });
-    }
+    const completedCycles = completedExits ?? 0;
 
+    // ── Currently inside (checked_in, not yet out) → CHECK OUT ──────────────
     if (qrEntry.checked_in_at && !qrEntry.checked_out_at) {
-      // Already checked in, not yet out → CHECK OUT
-      await supabaseAdmin
-        .from("entry_qr")
-        .update({
-          checked_out_at: now,
-          checked_out_by: session.userId,
-        })
-        .eq("id", qrEntry.id);
+      const entryNumber = completedCycles + 1;
+
+      await Promise.all([
+        supabaseAdmin
+          .from("entry_qr")
+          .update({ checked_out_at: now, checked_out_by: session.userId })
+          .eq("id", qrEntry.id),
+        supabaseAdmin.from("entry_scan_logs").insert({
+          qr_id: qrEntry.id,
+          user_id: qrEntry.user_id,
+          action: "check_out",
+          entry_number: entryNumber,
+          scanned_by: session.userId,
+          scanned_at: now,
+        }),
+      ]);
 
       return NextResponse.json({
         valid: true,
         action: "checked_out",
-        message: `Checked out. Was inside since ${new Date(qrEntry.checked_in_at).toLocaleTimeString()}`,
+        entryNumber,
+        message: `Exit recorded — ${ordinal(entryNumber)} entry. Was inside since ${new Date(qrEntry.checked_in_at).toLocaleTimeString()}`,
         student: qrEntry.users,
       });
     }
 
-    // Already checked in AND checked out
+    // ── New entry (fresh start OR returning after previous exit) → CHECK IN ─
+    const entryNumber = completedCycles + 1;
+
+    await Promise.all([
+      supabaseAdmin
+        .from("entry_qr")
+        .update({
+          checked_in_at: now,
+          checked_in_by: session.userId,
+          checked_out_at: null,
+          checked_out_by: null,
+          total_entries: entryNumber,
+        })
+        .eq("id", qrEntry.id),
+      supabaseAdmin.from("entry_scan_logs").insert({
+        qr_id: qrEntry.id,
+        user_id: qrEntry.user_id,
+        action: "check_in",
+        entry_number: entryNumber,
+        scanned_by: session.userId,
+        scanned_at: now,
+      }),
+    ]);
+
+    const isReEntry = entryNumber > 1;
     return NextResponse.json({
-      valid: false,
-      action: "already_done",
-      message: `Already checked in at ${new Date(qrEntry.checked_in_at).toLocaleTimeString()} and out at ${new Date(qrEntry.checked_out_at).toLocaleTimeString()}`,
+      valid: true,
+      action: "checked_in",
+      entryNumber,
+      message: isReEntry
+        ? `Welcome back! This is your ${ordinal(entryNumber)} entry.`
+        : "Check-in successful! Welcome to MASS 2K26.",
       student: qrEntry.users,
     });
   } catch (err) {

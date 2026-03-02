@@ -71,3 +71,37 @@ export async function GET() {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireAuth(["student"]);
+    const { supportStatus, willingToCoordinate, interestedRoles, remarks } =
+      await req.json();
+
+    const { error } = await supabaseAdmin
+      .from("event_registrations")
+      .update({
+        support_status: supportStatus ?? false,
+        willing_to_coordinate: willingToCoordinate ?? false,
+        interested_roles: interestedRoles ?? [],
+        remarks: remarks ?? null,
+      })
+      .eq("user_id", session.userId);
+
+    if (error) {
+      console.error("Update error:", error);
+      return NextResponse.json(
+        { error: "Failed to update registration" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+    const status =
+      message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}

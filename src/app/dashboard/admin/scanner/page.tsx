@@ -11,10 +11,17 @@ import {
   LogOut,
 } from "lucide-react";
 
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 interface ScanResult {
   valid: boolean;
   action: string;
   message: string;
+  entryNumber?: number;
   student?: {
     name: string;
     register_number: string;
@@ -54,9 +61,15 @@ export default function AdminScannerPage() {
     return <XCircle className="h-12 w-12 text-red-400" />;
   };
 
-  const getResultTitle = (action: string) => {
-    if (action === "checked_in") return "CHECKED IN";
-    if (action === "checked_out") return "CHECKED OUT";
+  const getResultTitle = (action: string, entryNumber?: number) => {
+    if (action === "checked_in")
+      return entryNumber && entryNumber > 1
+        ? `${ordinal(entryNumber).toUpperCase()} ENTRY — CHECK IN`
+        : "CHECKED IN";
+    if (action === "checked_out")
+      return entryNumber
+        ? `${ordinal(entryNumber).toUpperCase()} ENTRY — EXIT`
+        : "CHECKED OUT";
     if (action === "already_done") return "ALREADY COMPLETE";
     return "ENTRY DENIED";
   };
@@ -107,8 +120,15 @@ export default function AdminScannerPage() {
               {getResultIcon(lastResult.action)}
               <div>
                 <h3 className="font-bold text-xl">
-                  {getResultTitle(lastResult.action)}
+                  {getResultTitle(lastResult.action, lastResult.entryNumber)}
                 </h3>
+                {lastResult.entryNumber &&
+                  lastResult.entryNumber > 1 &&
+                  lastResult.action === "checked_in" && (
+                    <span className="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Re-entry #{lastResult.entryNumber}
+                    </span>
+                  )}
                 <p className="text-sm text-muted-foreground mt-1">
                   {lastResult.message}
                 </p>
@@ -161,11 +181,17 @@ export default function AdminScannerPage() {
                 <span className="text-muted-foreground">
                   {result.student?.register_number}
                 </span>
-                <span className="text-muted-foreground">
-                  {result.student?.department}
-                </span>
+                {result.entryNumber && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
+                    {ordinal(result.entryNumber)} entry
+                  </span>
+                )}
                 <span className="ml-auto text-muted-foreground text-xs">
-                  {result.message}
+                  {result.action === "checked_in"
+                    ? "IN"
+                    : result.action === "checked_out"
+                      ? "OUT"
+                      : result.message}
                 </span>
               </div>
             ))}

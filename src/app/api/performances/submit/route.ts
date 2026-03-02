@@ -110,6 +110,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Enforce 3-event maximum (owned + as team member)
+    const MAX_EVENTS = 3;
+    const { count: ownedCount } = await supabaseAdmin
+      .from("performance_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.userId);
+
+    const regNo = session.registerNumber;
+    const { data: allTeamPerfs } = await supabaseAdmin
+      .from("performance_registrations")
+      .select("id, team_members, user_id")
+      .eq("is_team", true)
+      .neq("user_id", session.userId);
+
+    const teamCount = (allTeamPerfs || []).filter((p) => {
+      const members = p.team_members as { register_number: string }[];
+      return (
+        Array.isArray(members) &&
+        members.some(
+          (m) => m.register_number?.toUpperCase() === regNo?.toUpperCase(),
+        )
+      );
+    }).length;
+
+    if ((ownedCount ?? 0) + teamCount >= MAX_EVENTS) {
+      return NextResponse.json(
+        { error: `You have reached the maximum of ${MAX_EVENTS} events.` },
+        { status: 400 },
+      );
+    }
+
     const resolvedTeamMembers = await resolveTeamMembers(
       teamMembersRaw,
       isTeam,

@@ -95,12 +95,12 @@ export default function StudentDashboard() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
+        {/* <StatCard
           title="Willingness Form"
           value={data?.registration ? "Completed" : "Pending"}
           icon="📋"
           color={data?.registration ? "green" : "amber"}
-        />
+        /> */}
         <StatCard
           title="Payment"
           value={paymentLabel(data?.payment?.payment_status)}
