@@ -192,14 +192,25 @@ export default function PaymentPage() {
               )}
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Screenshot</span>
-                <a
-                  href={existingPayment.screenshot_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1 text-sm"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const img = document.createElement("img");
+                    img.src = existingPayment.screenshot_url;
+                    img.style.cssText =
+                      "max-width: 90vw; max-height: 90vh; border-radius: 8px;";
+                    const modal = document.createElement("div");
+                    modal.style.cssText =
+                      "position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50;";
+                    modal.onclick = () => modal.remove();
+                    modal.appendChild(img);
+                    document.body.appendChild(modal);
+                  }}
+                  className="text-primary hover:underline flex items-center gap-1 h-auto p-0"
                 >
-                  View <ExternalLink className="h-3.5 w-3.5" />
-                </a>
+                  Preview <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
 
@@ -301,7 +312,7 @@ export default function PaymentPage() {
                         Click to upload screenshot
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Max 5MB, JPG/PNG
+                        Max 2MB, JPG/PNG
                       </p>
                     </div>
                   )}

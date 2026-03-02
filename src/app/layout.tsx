@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { DeveloperProtection } from "@/components/dev-lock";
 
 const BASE_URL = "https://mass-2k26.vercel.app";
 
@@ -79,6 +80,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased min-h-screen overflow-x-hidden">
+        <DeveloperProtection />
         {children}
       </body>
     </html>
