@@ -42,6 +42,7 @@ interface DashboardData {
     total_entries?: number;
     qr_token: string;
   } | null;
+  surveyFilled: boolean;
 }
 
 const paymentLabel = (status?: string | null) => {
@@ -75,8 +76,8 @@ export default function StudentDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [regRes, payRes, perfRes, qrRes, teamPerfRes] = await Promise.all(
-          [
+        const [regRes, payRes, perfRes, qrRes, teamPerfRes, surveyRes] =
+          await Promise.all([
             fetch("/api/register").then((r) => r.json()),
             fetch("/api/payments/status")
               .then((r) => r.json())
@@ -86,8 +87,10 @@ export default function StudentDashboard() {
             fetch("/api/performances/team")
               .then((r) => r.json())
               .catch(() => ({ teamPerformances: [] })),
-          ],
-        );
+            fetch("/api/survey")
+              .then((r) => r.json())
+              .catch(() => ({ feedback: null })),
+          ]);
 
         setData({
           registration: regRes.registration || null,
@@ -95,6 +98,7 @@ export default function StudentDashboard() {
           performances: perfRes.performances || [],
           teamPerformances: teamPerfRes.teamPerformances || [],
           qr: qrRes.qr || null,
+          surveyFilled: !!surveyRes.feedback,
         });
       } catch (err) {
         console.error("Failed to load dashboard:", err);
@@ -120,13 +124,15 @@ export default function StudentDashboard() {
   // Determine quick action steps
   const steps = [
     {
-      key: "willingness",
-      label: "Willingness Form",
-      description: "Confirm your support & coordinator interest",
-      icon: ClipboardList,
-      href: "/dashboard/student/willingness",
-      status: data?.registration ? "done" : "inactive",
-      actionLabel: data?.registration ? "View Response" : "Fill Now",
+      key: "survey",
+      label: "Survey",
+      description: data?.surveyFilled
+        ? "Survey submitted — thank you!"
+        : "Share your event preferences & feedback",
+      icon: FileText,
+      href: "/dashboard/student/survey",
+      status: (data?.surveyFilled ? "done" : "inactive") as "done" | "inactive",
+      actionLabel: data?.surveyFilled ? "View Response" : "Fill Survey",
     },
     {
       key: "payment",
@@ -138,13 +144,22 @@ export default function StudentDashboard() {
       href: "/dashboard/student/payment",
       status:
         payStatus === "approved"
-          ? "done"
+          ? ("done" as const)
           : payStatus === "rejected"
-            ? "error"
+            ? ("error" as const)
             : payStatus === "pending"
-              ? "pending"
-              : "inactive",
+              ? ("pending" as const)
+              : ("inactive" as const),
       actionLabel: payStatus ? "View Payment" : "Upload Receipt",
+    },
+    {
+      key: "willingness",
+      label: "Willingness Form",
+      description: "Confirm your support & coordinator interest",
+      icon: ClipboardList,
+      href: "/dashboard/student/willingness",
+      status: (data?.registration ? "done" : "inactive") as "done" | "inactive",
+      actionLabel: data?.registration ? "View Response" : "Fill Now",
     },
     {
       key: "performance",
@@ -155,24 +170,13 @@ export default function StudentDashboard() {
           : "Register for cultural events",
       icon: Drama,
       href: "/dashboard/student/performance",
-      status:
-        data?.performances && data.performances.length > 0
-          ? "done"
-          : "inactive",
+      status: (data?.performances && data.performances.length > 0
+        ? "done"
+        : "inactive") as "done" | "inactive",
       actionLabel:
         data?.performances && data.performances.length > 0
           ? "Manage"
           : "Register",
-    },
-    {
-      key: "survey",
-      label: "Survey",
-      description: "Share your event preferences & feedback",
-      icon: FileText,
-      href: "/dashboard/student/survey",
-      status: payStatus === "approved" ? "inactive" : "inactive",
-      actionLabel: "Fill Survey",
-      locked: payStatus !== "approved",
     },
     {
       key: "qr",
@@ -186,7 +190,9 @@ export default function StudentDashboard() {
         : "Available after payment approval",
       icon: Ticket,
       href: "/dashboard/student/qr",
-      status: data?.qr?.is_active ? "done" : "inactive",
+      status: (data?.qr?.is_active ? "done" : "inactive") as
+        | "done"
+        | "inactive",
       actionLabel: data?.qr?.is_active ? "View Ticket" : "Not Available",
       locked: !data?.qr?.is_active,
     },

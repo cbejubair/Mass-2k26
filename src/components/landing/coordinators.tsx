@@ -27,13 +27,38 @@ const overallCoordinators: {
   students: OverallPerson[];
 } = {
   staff: [
-    { name: "Mr. Nithya Prakash", role: "Staff Coordinator", phone: "", photo: "/coordinator/boy.jpeg" },
-    { name: "TBA", role: "Staff Coordinator", phone: "", photo: "/coordinator/boy.jpeg" },
+    {
+      name: "Mr. Nithya Prakash",
+      role: "Staff Coordinator",
+      phone: "",
+      photo: "/coordinator/boy.jpeg",
+    },
+    {
+      name: "TBA",
+      role: "Staff Coordinator",
+      phone: "",
+      photo: "/coordinator/boy.jpeg",
+    },
   ],
   students: [
-    { name: "TBA", role: "Overall Student Coordinator", phone: "", photo: "/coordinator/boy.jpeg" },
-    { name: "TBA", role: "Overall Student Coordinator", phone: "", photo: "/coordinator/girl.jpeg" },
-    { name: "TBA", role: "Overall Student Coordinator", phone: "", photo: "/coordinator/boy.jpeg" },
+    {
+      name: "TBA",
+      role: "Overall Student Coordinator",
+      phone: "",
+      photo: "/coordinator/boy.jpeg",
+    },
+    {
+      name: "TBA",
+      role: "Overall Student Coordinator",
+      phone: "",
+      photo: "/coordinator/girl.jpeg",
+    },
+    {
+      name: "TBA",
+      role: "Overall Student Coordinator",
+      phone: "",
+      photo: "/coordinator/boy.jpeg",
+    },
   ],
 };
 
@@ -43,13 +68,48 @@ const departments: DeptData[] = [
     color: "from-violet-500 to-purple-600",
     ring: "ring-violet-500/30",
     coords: [
-      { year: "I - A", name: "Kopisha", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "I - B", name: "Naveen", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "I - B", name: "Vinil Raj", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "II - A", name: "Thavasi", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "II - B", name: "Jubair", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "III", name: "Sandhiya", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "IV", name: "Abishek", phone: "", photo: "/coordinator/boy.jpeg" },
+      {
+        year: "I - A",
+        name: "Kopisha",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "I - B",
+        name: "Naveen",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "I - B",
+        name: "Vinil Raj",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "II - A",
+        name: "Thavasi",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "II - B",
+        name: "Jubair",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "III",
+        name: "Sandhiya",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "IV",
+        name: "Abishek",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
     ],
   },
   {
@@ -57,9 +117,24 @@ const departments: DeptData[] = [
     color: "from-blue-500 to-cyan-500",
     ring: "ring-blue-500/30",
     coords: [
-      { year: "I", name: "Thiraneesh", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "II", name: "Sree Sakthi", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "III", name: "Nakshatra", phone: "", photo: "/coordinator/girl.jpeg" },
+      {
+        year: "I",
+        name: "Thiraneesh",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "II",
+        name: "Sree Sakthi",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "III",
+        name: "Nakshatra",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
       { year: "IV", name: "TBA", phone: "", photo: "/coordinator/boy.jpeg" },
     ],
   },
@@ -68,9 +143,19 @@ const departments: DeptData[] = [
     color: "from-emerald-500 to-teal-500",
     ring: "ring-emerald-500/30",
     coords: [
-      { year: "I", name: "Prasanna", phone: "", photo: "/coordinator/boy.jpeg" },
+      {
+        year: "I",
+        name: "Prasanna",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
       { year: "II", name: "David", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "III", name: "Tameema", phone: "", photo: "/coordinator/girl.jpeg" },
+      {
+        year: "III",
+        name: "Tameema",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
       { year: "IV", name: "Harish", phone: "", photo: "/coordinator/boy.jpeg" },
     ],
   },
@@ -79,10 +164,30 @@ const departments: DeptData[] = [
     color: "from-lime-500 to-green-600",
     ring: "ring-lime-500/30",
     coords: [
-      { year: "I", name: "Sano Jervin", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "II", name: "Somaprabha", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "III", name: "Nisha", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "IV", name: "Jaya Sounthari", phone: "", photo: "/coordinator/girl.jpeg" },
+      {
+        year: "I",
+        name: "Sano Jervin",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "II",
+        name: "Somaprabha",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "III",
+        name: "Nisha",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "IV",
+        name: "Jaya Sounthari",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
     ],
   },
   {
@@ -91,9 +196,24 @@ const departments: DeptData[] = [
     ring: "ring-orange-500/30",
     coords: [
       { year: "I", name: "Avinash", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "II", name: "Dharsana Sri", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "III", name: "Antony Abishek", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "IV", name: "Gubendran", phone: "", photo: "/coordinator/boy.jpeg" },
+      {
+        year: "II",
+        name: "Dharsana Sri",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "III",
+        name: "Antony Abishek",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "IV",
+        name: "Gubendran",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
     ],
   },
   {
@@ -101,11 +221,36 @@ const departments: DeptData[] = [
     color: "from-pink-500 to-rose-500",
     ring: "ring-pink-500/30",
     coords: [
-      { year: "I - A", name: "Subash", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "I - B", name: "Santhosh", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "II", name: "Abishek", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "III", name: "Naveen", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "IV", name: "Aswin Pal", phone: "", photo: "/coordinator/boy.jpeg" },
+      {
+        year: "I - A",
+        name: "Subash",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "I - B",
+        name: "Santhosh",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "II",
+        name: "Abishek",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "III",
+        name: "Naveen",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "IV",
+        name: "Aswin Pal",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
     ],
   },
   {
@@ -113,10 +258,30 @@ const departments: DeptData[] = [
     color: "from-fuchsia-500 to-purple-500",
     ring: "ring-fuchsia-500/30",
     coords: [
-      { year: "I", name: "Keerthana", phone: "", photo: "/coordinator/girl.jpeg" },
-      { year: "II", name: "Gokul & Vedha Nayaki", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "III", name: "Vishal", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "IV", name: "Sanjeev", phone: "", photo: "/coordinator/boy.jpeg" },
+      {
+        year: "I",
+        name: "Keerthana",
+        phone: "",
+        photo: "/coordinator/girl.jpeg",
+      },
+      {
+        year: "II",
+        name: "Gokul & Vedha Nayaki",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "III",
+        name: "Vishal",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
+      {
+        year: "IV",
+        name: "Sanjeev",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
     ],
   },
   {
@@ -124,9 +289,14 @@ const departments: DeptData[] = [
     color: "from-amber-500 to-yellow-500",
     ring: "ring-amber-500/30",
     coords: [
-        { year: "I", name: "Pranesh", phone: "", photo: "/coordinator/boy.jpeg" },
-        { year: "II", name: "Aadhi", phone: "", photo: "/coordinator/boy.jpeg" },
-      { year: "III", name: "Pradeep", phone: "", photo: "/coordinator/boy.jpeg" },
+      { year: "I", name: "Pranesh", phone: "", photo: "/coordinator/boy.jpeg" },
+      { year: "II", name: "Aadhi", phone: "", photo: "/coordinator/boy.jpeg" },
+      {
+        year: "III",
+        name: "Pradeep",
+        phone: "",
+        photo: "/coordinator/boy.jpeg",
+      },
     ],
   },
 ];
@@ -425,7 +595,7 @@ export default function CoordinatorsSection() {
           </p>
 
           {/* Stats strip */}
-          <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-6 px-8 py-4 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+          {/* <div className="mt-8 inline-flex flex-wrap items-center justify-center gap-6 px-8 py-4 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
             {[
               { value: "3", label: "Staff" },
               { value: "3", label: "Student Overall" },
@@ -441,7 +611,7 @@ export default function CoordinatorsSection() {
                 </p>
               </div>
             ))}
-          </div>
+          </div> */}
         </motion.div>
 
         {/* ── Staff Coordinators ── */}
@@ -453,19 +623,21 @@ export default function CoordinatorsSection() {
             </span>
             <div className="flex-1 h-px bg-white/5" />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {overallCoordinators.staff.map((c, i) => (
-              <OverallCard
-                key={i}
-                index={i}
-                name={c.name}
-                role={c.role}
-                phone={c.phone}
-                photo={c.photo}
-                accent="from-purple-500 to-indigo-600"
-                isStaff={true}
-              />
-            ))}
+          <div className="flex justify-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-fit">
+              {overallCoordinators.staff.map((c, i) => (
+                <OverallCard
+                  key={i}
+                  index={i}
+                  name={c.name}
+                  role={c.role}
+                  phone={c.phone}
+                  photo={c.photo}
+                  accent="from-purple-500 to-indigo-600"
+                  isStaff={true}
+                />
+              ))}
+            </div>
           </div>
         </div>
 

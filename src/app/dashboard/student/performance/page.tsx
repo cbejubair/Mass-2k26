@@ -249,20 +249,6 @@ function MusicPlayer({ url }: { url: string }) {
             <span>{fmt(duration)}</span>
           </div>
         </div>
-
-        {/* Volume icon + external link */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Volume2 className="h-3.5 w-3.5 text-muted-foreground/50" />
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-purple-400 transition-colors"
-            title="Open in new tab"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </div>
       </div>
 
       {/* Status label */}

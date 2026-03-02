@@ -18,6 +18,7 @@ import CTASection from "@/components/landing/CTASection";
 import Sliders from "@/components/landing/Sliders";
 import MusicCD from "@/components/landing/MusicCD";
 import CoordinatorsSection from "@/components/landing/coordinators";
+import FAQSection from "@/components/landing/faqsection";
 
 /* ------------------------------------------------------------------ */
 /*  Floating particles background                                      */
@@ -252,7 +253,7 @@ export default function LandingPage() {
       {/* <StatsSection /> */}
 
       {/* ===================== Slider ===================== */}
-      <Sliders />
+      {/* <Sliders /> */}
 
       {/* ===================== About — TabCards ===================== */}
       <TabCards />
@@ -271,6 +272,9 @@ export default function LandingPage() {
 
       {/* ===================== Gallery ===================== */}
       {/* <GridImages /> */}
+
+      {/* ===================== FAQ ===================== */}
+      <FAQSection />
 
       {/* ===================== CTA ===================== */}
       <CTASection />
