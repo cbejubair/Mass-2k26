@@ -31,14 +31,15 @@ export async function GET() {
       label: `${dept} - ${yr} ${section}`,
     };
 
-    // Get students from coordinator's class
+    // Get students from coordinator's class (with full details for unpaid list)
     const { data: students, error: studentsError } = await supabaseAdmin
       .from("users")
-      .select("id")
+      .select("id, name, register_number, department, year, class_section")
       .eq("role", "student")
       .eq("department", dept)
       .eq("year", yr)
-      .eq("class_section", section);
+      .eq("class_section", section)
+      .order("name", { ascending: true });
 
     if (studentsError) {
       console.error(
@@ -47,7 +48,8 @@ export async function GET() {
       );
     }
 
-    const studentIds = (students || []).map((s) => s.id);
+    const allStudents = students || [];
+    const studentIds = allStudents.map((s) => s.id);
 
     if (studentIds.length === 0) {
       return NextResponse.json({
@@ -61,6 +63,7 @@ export async function GET() {
           pendingAmount: 0,
         },
         payments: [],
+        unpaidStudents: [],
       });
     }
 
@@ -133,7 +136,20 @@ export async function GET() {
         .reduce((sum, p) => sum + (p.amount || 0), 0),
     };
 
-    return NextResponse.json({ classScope, summary, payments: mapped });
+    // Compute students who don't have an active (non-rejected) payment
+    const paidUserIds = new Set(
+      items
+        .filter((p) => p.payment_status !== "rejected")
+        .map((p) => p.user_id),
+    );
+    const unpaidStudents = allStudents.filter((s) => !paidUserIds.has(s.id));
+
+    return NextResponse.json({
+      classScope,
+      summary,
+      payments: mapped,
+      unpaidStudents,
+    });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";

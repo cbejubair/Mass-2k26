@@ -8,24 +8,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     const {
-      timingPreference,
-      transportFeasibility,
-      comfortLevel,
-      safetyMeasures,
-      atmospherePreference,
-      supportScore,
-      challenges,
+      transportAfterEvent,
+      needCollegeTransport,
+      transportArea,
+      transportDistance,
+      stallInterest,
       creativeSuggestions,
     } = body;
 
     // Validate required fields
-    if (
-      !timingPreference ||
-      !transportFeasibility ||
-      !comfortLevel ||
-      !atmospherePreference ||
-      !supportScore
-    ) {
+    if (!transportAfterEvent || !needCollegeTransport) {
       return NextResponse.json(
         { error: "Please answer all required questions" },
         { status: 400 },
@@ -33,15 +25,19 @@ export async function POST(req: NextRequest) {
     }
 
     const surveyData = {
-      timing_preference: timingPreference,
-      transport_feasibility: transportFeasibility,
-      comfort_level: comfortLevel,
-      safety_measures: safetyMeasures?.trim() || null,
-      atmosphere_preference: atmospherePreference,
-      support_score: parseInt(supportScore),
-      challenges: challenges?.trim() || null,
+      transport_after_event: transportAfterEvent,
+      need_college_transport: needCollegeTransport,
+      transport_area:
+        needCollegeTransport === "yes" ? transportArea?.trim() || null : null,
+      transport_distance:
+        needCollegeTransport === "yes"
+          ? transportDistance?.trim() || null
+          : null,
+      stall_interest:
+        Array.isArray(stallInterest) && stallInterest.length > 0
+          ? stallInterest
+          : null,
       creative_suggestions: creativeSuggestions?.trim() || null,
-      suggestion_text: null,
     };
 
     // Upsert: replace existing feedback

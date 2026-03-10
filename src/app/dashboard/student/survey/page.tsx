@@ -11,45 +11,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   CheckCircle2,
   ClipboardList,
-  Pencil,
-  Clock,
   Bus,
-  ShieldCheck,
-  Sparkles,
-  BarChart3,
-  MessageSquare,
+  ShoppingBag,
   Lightbulb,
   AlertCircle,
+  HelpCircle,
+  MapPin,
 } from "lucide-react";
 
 // ─── Option maps ─────────────────────────────────────────────────────────────
 
-const timingOptions = [
-  { value: "plan_a", label: "Plan A — Event until 8:00 PM" },
-  { value: "plan_b", label: "Plan B — Event until 5:00 PM" },
+const transportAfterOptions = [
+  { value: "by_own", label: "By Own (self-arranged)" },
+  { value: "out_bus", label: "Out Bus / Public Transport" },
+  { value: "hosteler", label: "Hosteler (staying on campus)" },
+  { value: "parent", label: "Parent / Guardian Pick-up" },
 ];
-const transportOptions = [
-  { value: "yes", label: "Yes, I will arrange" },
-  { value: "no", label: "No, I cannot" },
-  {
-    value: "need_college_transport",
-    label: "I may need college-arranged transport",
-  },
-];
-const comfortOptions = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
-  { value: "depends", label: "Depends on transport/security" },
-];
-const atmosphereOptions = [
-  { value: "daytime", label: "Daytime cultural fest" },
-  { value: "night_concert", label: "Night concert-style event" },
-  { value: "balanced", label: "Balanced (Day programs + Evening finale)" },
+
+const stallItems = [
+  { value: "shawarma", label: "🌯 Shawarma" },
+  { value: "mojito", label: "🍹 Mojito" },
+  { value: "momos", label: "🥟 Momos" },
+  { value: "sprinkle_potato", label: "🥔 Sprinkle Potato" },
+  { value: "directs", label: "🍽️ Directs" },
+  { value: "neon_vibe", label: "✨ Neon Vibe Items" },
+  { value: "fancy_items", label: "🎀 Fancy / Accessories" },
 ];
 
 function labelFor(opts: { value: string; label: string }[], val: string) {
@@ -196,13 +186,11 @@ function SummaryRow({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SurveyPage() {
-  const [timingPreference, setTimingPreference] = useState("");
-  const [transportFeasibility, setTransportFeasibility] = useState("");
-  const [comfortLevel, setComfortLevel] = useState("");
-  const [safetyMeasures, setSafetyMeasures] = useState("");
-  const [atmospherePreference, setAtmospherePreference] = useState("");
-  const [supportScore, setSupportScore] = useState(0);
-  const [challenges, setChallenges] = useState("");
+  const [transportAfterEvent, setTransportAfterEvent] = useState("");
+  const [needCollegeTransport, setNeedCollegeTransport] = useState("");
+  const [transportArea, setTransportArea] = useState("");
+  const [transportDistance, setTransportDistance] = useState("");
+  const [stallInterest, setStallInterest] = useState<string[]>([]);
   const [creativeSuggestions, setCreativeSuggestions] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -210,7 +198,6 @@ export default function SurveyPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [existing, setExisting] = useState(false);
-  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     fetch("/api/survey")
@@ -218,13 +205,11 @@ export default function SurveyPage() {
       .then((data) => {
         if (data.feedback) {
           const f = data.feedback;
-          setTimingPreference(f.timing_preference || "");
-          setTransportFeasibility(f.transport_feasibility || "");
-          setComfortLevel(f.comfort_level || "");
-          setSafetyMeasures(f.safety_measures || "");
-          setAtmospherePreference(f.atmosphere_preference || "");
-          setSupportScore(f.support_score || 0);
-          setChallenges(f.challenges || "");
+          setTransportAfterEvent(f.transport_after_event || "");
+          setNeedCollegeTransport(f.need_college_transport || "");
+          setTransportArea(f.transport_area || "");
+          setTransportDistance(f.transport_distance || "");
+          setStallInterest(f.stall_interest || []);
           setCreativeSuggestions(f.creative_suggestions || "");
           setExisting(true);
         }
@@ -233,18 +218,17 @@ export default function SurveyPage() {
       .finally(() => setPageLoading(false));
   }, []);
 
+  const toggleStall = (val: string) =>
+    setStallInterest((prev) =>
+      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val],
+    );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    if (
-      !timingPreference ||
-      !transportFeasibility ||
-      !comfortLevel ||
-      !atmospherePreference ||
-      !supportScore
-    ) {
+    if (!transportAfterEvent || !needCollegeTransport) {
       setError("Please answer all required questions.");
       setLoading(false);
       return;
@@ -255,13 +239,11 @@ export default function SurveyPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          timingPreference,
-          transportFeasibility,
-          comfortLevel,
-          safetyMeasures,
-          atmospherePreference,
-          supportScore: String(supportScore),
-          challenges,
+          transportAfterEvent,
+          needCollegeTransport,
+          transportArea,
+          transportDistance,
+          stallInterest,
           creativeSuggestions,
         }),
       });
@@ -274,7 +256,6 @@ export default function SurveyPage() {
 
       setSuccess(true);
       setExisting(true);
-      setEditing(false);
     } catch {
       setError("Network error");
     } finally {
@@ -295,10 +276,9 @@ export default function SurveyPage() {
 
   // ─── Read-only summary view ──────────────────────────────────────────────────
 
-  if (existing && !editing) {
+  if (existing && !success) {
     return (
       <div className="max-w-2xl mx-auto space-y-6 pb-12">
-        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
@@ -318,134 +298,100 @@ export default function SurveyPage() {
           </Badge>
         </div>
 
-        {/* Post-update success banner */}
-        {success && (
-          <div className="relative overflow-hidden flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
-            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-emerald-500 rounded-l-xl" />
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-            Survey updated successfully!
-          </div>
-        )}
-
-        {/* Summary card */}
         <Card className="border-white/10 bg-card/60 backdrop-blur-sm overflow-hidden">
           <CardHeader className="pb-3 border-b border-white/5">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">Your Responses</CardTitle>
-                {/* <CardDescription>
-                  Tap &quot;Edit&quot; to change any answer
-                </CardDescription> */}
-              </div>
-              {/* <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEditing(true);
-                  setSuccess(false);
-                  setError("");
-                }}
-                className="gap-1.5 h-8 text-xs hover:border-primary/50 hover:text-primary"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit
-              </Button> */}
-            </div>
+            <CardTitle className="text-base">Your Responses</CardTitle>
           </CardHeader>
           <CardContent className="p-0 divide-y divide-white/5">
-            <div className="px-5">
-              <SummaryRow
-                icon={Clock}
-                question="Event Timing Preference"
-                answer={labelFor(timingOptions, timingPreference)}
-                accent="blue"
-              />
-            </div>
-            <div className="px-5">
-              <SummaryRow
-                icon={Bus}
-                question="Transportation Feasibility"
-                answer={labelFor(transportOptions, transportFeasibility)}
-                accent="amber"
-              />
-            </div>
-            <div className="px-5">
-              <SummaryRow
-                icon={ShieldCheck}
-                question="Safety & Comfort"
-                answer={labelFor(comfortOptions, comfortLevel)}
-                accent="green"
-              />
-            </div>
-            {safetyMeasures && (
-              <div className="px-5">
-                <SummaryRow
-                  icon={ShieldCheck}
-                  question="Safety Measures Expected"
-                  answer={safetyMeasures}
-                />
+            <div className="flex gap-4 px-5 py-4">
+              <div className="w-8 h-8 rounded-lg border bg-amber-500/10 border-amber-500/20 flex items-center justify-center shrink-0">
+                <Bus className="h-4 w-4 text-amber-400" />
               </div>
-            )}
-            <div className="px-5">
-              <SummaryRow
-                icon={Sparkles}
-                question="Crowd & Energy Expectation"
-                answer={labelFor(atmosphereOptions, atmospherePreference)}
-                accent="blue"
-              />
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">
+                  Transportation After Event
+                </p>
+                <p className="text-sm font-semibold">
+                  {labelFor(transportAfterOptions, transportAfterEvent) || (
+                    <span className="text-muted-foreground/50 italic font-normal">
+                      Not answered
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
-            {/* Support score bar */}
-            <div className="px-5">
-              <div className="flex gap-4 py-4">
-                <div className="w-8 h-8 rounded-lg border bg-amber-500/10 border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <BarChart3 className="h-4 w-4 text-amber-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground font-medium mb-2">
-                    Final Opinion Weight
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <div
-                          key={n}
-                          className={`h-2 w-6 rounded-full transition-all ${
-                            n <= supportScore ? "bg-amber-500" : "bg-white/10"
-                          }`}
-                        />
-                      ))}
+
+            <div className="flex gap-4 px-5 py-4">
+              <div className="w-8 h-8 rounded-lg border bg-blue-500/10 border-blue-500/20 flex items-center justify-center shrink-0">
+                <HelpCircle className="h-4 w-4 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground font-medium mb-1">
+                  Need College Transport?
+                </p>
+                <p className="text-sm font-semibold capitalize">
+                  {needCollegeTransport || (
+                    <span className="text-muted-foreground/50 italic font-normal">
+                      Not answered
+                    </span>
+                  )}
+                </p>
+                {needCollegeTransport === "yes" &&
+                  (transportArea || transportDistance) && (
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      {transportArea && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {transportArea}
+                        </span>
+                      )}
+                      {transportDistance && (
+                        <span>~{transportDistance} from college</span>
+                      )}
                     </div>
-                    <span className="text-sm font-bold text-amber-400">
-                      {supportScore}/5
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {supportScore >= 4
-                        ? "Strongly supports 8 PM"
-                        : supportScore === 3
-                          ? "Neutral"
-                          : "Opposes 8 PM"}
-                    </span>
-                  </div>
-                </div>
+                  )}
               </div>
             </div>
-            {challenges && (
-              <div className="px-5">
-                <SummaryRow
-                  icon={MessageSquare}
-                  question="Challenges Foreseen"
-                  answer={challenges}
-                />
+
+            <div className="flex gap-4 px-5 py-4">
+              <div className="w-8 h-8 rounded-lg border bg-emerald-500/10 border-emerald-500/20 flex items-center justify-center shrink-0">
+                <ShoppingBag className="h-4 w-4 text-emerald-400" />
               </div>
-            )}
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-2">
+                  Stall Interest
+                </p>
+                {stallInterest.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {stallInterest.map((s) => (
+                      <span
+                        key={s}
+                        className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs text-emerald-400"
+                      >
+                        {labelFor(stallItems, s)}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground/50 italic">
+                    None selected
+                  </p>
+                )}
+              </div>
+            </div>
+
             {creativeSuggestions && (
-              <div className="px-5">
-                <SummaryRow
-                  icon={Lightbulb}
-                  question="Creative Suggestions"
-                  answer={creativeSuggestions}
-                  accent="amber"
-                />
+              <div className="flex gap-4 px-5 py-4">
+                <div className="w-8 h-8 rounded-lg border bg-amber-500/10 border-amber-500/20 flex items-center justify-center shrink-0">
+                  <Lightbulb className="h-4 w-4 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">
+                    Creative Suggestions
+                  </p>
+                  <p className="text-sm font-semibold leading-snug">
+                    {creativeSuggestions}
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
@@ -458,33 +404,25 @@ export default function SurveyPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-primary" />
-            MASS 2K26 Survey
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {editing
-              ? "Update your responses below."
-              : "Help us plan a better event. Your responses are confidential."}
-          </p>
-        </div>
-        {editing && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditing(false);
-              setError("");
-            }}
-            className="shrink-0 mt-1 h-8 text-xs"
-          >
-            Cancel
-          </Button>
-        )}
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+          <ClipboardList className="h-5 w-5 text-primary" />
+          MASS 2K26 Survey
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          {success
+            ? "Thank you! Response updated successfully."
+            : "Help us plan the event better. Responses are confidential."}
+        </p>
       </div>
+
+      {success && (
+        <div className="relative overflow-hidden flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 px-4 py-3 text-sm text-emerald-300">
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-emerald-500 rounded-l-xl" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          Survey submitted successfully!
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
@@ -495,35 +433,7 @@ export default function SurveyPage() {
           </div>
         )}
 
-        {/* Q1 — Timing */}
-        <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                <Clock className="h-3.5 w-3.5 text-blue-400" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">
-                  Event Timing Preference{" "}
-                  <span className="text-red-400">*</span>
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Which plan do you prefer for MASS 2K26?
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-1 pb-5">
-            <RadioGroup
-              name="timing"
-              value={timingPreference}
-              onChange={setTimingPreference}
-              options={timingOptions}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Q2 — Transport */}
+        {/* Q1 — Transportation After Event */}
         <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2.5">
@@ -532,160 +442,136 @@ export default function SurveyPage() {
               </div>
               <div>
                 <CardTitle className="text-sm">
-                  Transportation Feasibility{" "}
+                  Transportation After Event{" "}
                   <span className="text-red-400">*</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  If Plan A (8:00 PM) is selected, can you arrange your own
-                  transport?
+                  How do you plan to travel home after the event?
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-1 pb-5">
             <RadioGroup
-              name="transport"
-              value={transportFeasibility}
-              onChange={setTransportFeasibility}
-              options={transportOptions}
+              name="transport_after"
+              value={transportAfterEvent}
+              onChange={setTransportAfterEvent}
+              options={transportAfterOptions}
             />
           </CardContent>
         </Card>
 
-        {/* Q3 — Comfort */}
-        <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">
-                  Safety & Comfort <span className="text-red-400">*</span>
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Do you feel comfortable attending an event that ends at 8:00
-                  PM?
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-1 pb-5">
-            <RadioGroup
-              name="comfort"
-              value={comfortLevel}
-              onChange={setComfortLevel}
-              options={comfortOptions}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Q4 — Safety text */}
-        <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">
-                  Safety Measures Expected
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  What safety measures do you expect if the event runs till 8:00
-                  PM?
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-1 pb-5">
-            <Textarea
-              value={safetyMeasures}
-              onChange={(e) => setSafetyMeasures(e.target.value)}
-              placeholder="e.g., security, lighting, female safety support, transport coordination…"
-              className="min-h-[80px] resize-none text-sm"
-            />
-          </CardContent>
-        </Card>
-
-        {/* Q5 — Atmosphere */}
+        {/* Q2 — Need College Transport */}
         <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                <Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                <HelpCircle className="h-3.5 w-3.5 text-blue-400" />
               </div>
               <div>
                 <CardTitle className="text-sm">
-                  Crowd & Energy Expectation{" "}
+                  Need College Transport?{" "}
                   <span className="text-red-400">*</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Which atmosphere do you prefer?
+                  Do you need college to arrange transport for you?
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-1 pb-5">
+          <CardContent className="pt-1 pb-5 space-y-4">
             <RadioGroup
-              name="atmosphere"
-              value={atmospherePreference}
-              onChange={setAtmospherePreference}
-              options={atmosphereOptions}
+              name="need_college_transport"
+              value={needCollegeTransport}
+              onChange={(v) => {
+                setNeedCollegeTransport(v);
+                if (v === "no") {
+                  setTransportArea("");
+                  setTransportDistance("");
+                }
+              }}
+              options={[
+                { value: "yes", label: "Yes, I need college transport" },
+                { value: "no", label: "No, I don't need it" },
+              ]}
             />
+            {needCollegeTransport === "yes" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Area / Location
+                  </label>
+                  <input
+                    type="text"
+                    value={transportArea}
+                    onChange={(e) => setTransportArea(e.target.value)}
+                    placeholder="e.g., Anna Nagar, Tambaram…"
+                    className="w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Distance from College
+                  </label>
+                  <input
+                    type="text"
+                    value={transportDistance}
+                    onChange={(e) => setTransportDistance(e.target.value)}
+                    placeholder="e.g., 15 km, 30 min…"
+                    className="w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Q6 — Score */}
+        {/* Q3 — Stall Interest */}
         <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
-                <BarChart3 className="h-3.5 w-3.5 text-amber-400" />
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <ShoppingBag className="h-3.5 w-3.5 text-emerald-400" />
               </div>
               <div>
-                <CardTitle className="text-sm">
-                  Final Opinion Weight <span className="text-red-400">*</span>
-                </CardTitle>
+                <CardTitle className="text-sm">Stall Interest</CardTitle>
                 <CardDescription className="text-xs">
-                  How strongly do you support conducting the event until 8:00
-                  PM? (1–5)
+                  Which stalls would you visit? Select all that apply.
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-1 pb-5">
-            <ScaleSelector value={supportScore} onChange={setSupportScore} />
-          </CardContent>
-        </Card>
-
-        {/* Q7 — Challenges */}
-        <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">Challenges Foreseen</CardTitle>
-                <CardDescription className="text-xs">
-                  Transportation, safety, discipline, academic schedule, noise,
-                  etc.
-                </CardDescription>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {stallItems.map((item) => {
+                const checked = stallInterest.includes(item.value);
+                return (
+                  <label
+                    key={item.value}
+                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all duration-150 ${
+                      checked
+                        ? "border-emerald-500/40 bg-emerald-500/8 shadow-sm"
+                        : "border-border/60 hover:border-emerald-500/30 hover:bg-muted/30"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleStall(item.value)}
+                      className="accent-emerald-500 h-4 w-4 shrink-0"
+                    />
+                    <span className="text-sm">{item.label}</span>
+                    {checked && (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 ml-auto shrink-0" />
+                    )}
+                  </label>
+                );
+              })}
             </div>
-          </CardHeader>
-          <CardContent className="pt-1 pb-5">
-            <Textarea
-              value={challenges}
-              onChange={(e) => setChallenges(e.target.value)}
-              placeholder="Your thoughts…"
-              className="min-h-[80px] resize-none text-sm"
-            />
           </CardContent>
         </Card>
 
-        {/* Q8 — Suggestions */}
+        {/* Q4 — Creative Suggestions */}
         <Card className="border-white/10 bg-card/60 backdrop-blur-sm">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2.5">
@@ -695,7 +581,7 @@ export default function SurveyPage() {
               <div>
                 <CardTitle className="text-sm">Creative Suggestions</CardTitle>
                 <CardDescription className="text-xs">
-                  Practical ideas to improve execution, safety, or engagement.
+                  Practical ideas to improve the event, safety, or engagement.
                 </CardDescription>
               </div>
             </div>
@@ -709,8 +595,6 @@ export default function SurveyPage() {
             />
           </CardContent>
         </Card>
-
-        <Separator className="opacity-20" />
 
         <Button
           type="submit"
