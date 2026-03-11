@@ -4,6 +4,12 @@ import { requireAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { v4 as uuidv4 } from "uuid";
 
+export const runtime = "nodejs";
+
+function normalizeEnv(value?: string | null) {
+  return value?.trim().replace(/^['"]|['"]$/g, "") || "";
+}
+
 function parseError(err: unknown): { message: string; status: number } {
   if (typeof err === "string") {
     return {
@@ -46,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keySecret = normalizeEnv(process.env.RAZORPAY_KEY_SECRET);
     if (!keySecret) {
       console.error("[capture] RAZORPAY_KEY_SECRET is not set");
       return NextResponse.json(

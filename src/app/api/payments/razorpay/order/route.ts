@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import { requireAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+
+export const runtime = "nodejs";
+
+function normalizeEnv(value?: string | null) {
+  return value?.trim().replace(/^['"]|['"]$/g, "") || "";
+}
+
+function buildBasicAuth(keyId: string, keySecret: string) {
+  return Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+}
 
 /** Normalise anything the Razorpay SDK or our own code may throw */
 function parseError(err: unknown): { message: string; status: number } {
@@ -37,12 +46,25 @@ function parseError(err: unknown): { message: string; status: number } {
   return { message: "Internal server error", status: 500 };
 }
 
+type RazorpayOrderResponse = {
+  id?: string;
+  amount?: number;
+  currency?: string;
+  error?: {
+    code?: string;
+    description?: string;
+    reason?: string;
+    source?: string;
+    step?: string;
+  };
+};
+
 export async function POST() {
   try {
     const session = await requireAuth(["student"]);
 
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keyId = normalizeEnv(process.env.RAZORPAY_KEY_ID);
+    const keySecret = normalizeEnv(process.env.RAZORPAY_KEY_SECRET);
     if (!keyId || !keySecret) {
       console.error(
         "[order] RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET not set in environment",
@@ -52,8 +74,6 @@ export async function POST() {
         { status: 500 },
       );
     }
-
-    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
     // Verify the user actually exists in the DB (guards against stale/cross-env JWTs)
     const { data: dbUser, error: userErr } = await supabaseAdmin
@@ -88,23 +108,73 @@ export async function POST() {
       );
     }
 
-    let order;
+    let order: RazorpayOrderResponse | null = null;
     try {
-      order = await razorpay.orders.create({
-        amount: 50000, // ₹500 in paise
-        currency: "INR",
-        receipt: `rcpt_${session.userId.slice(0, 8)}_${Date.now()}`,
+      const response = await fetch("https://api.razorpay.com/v1/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${buildBasicAuth(keyId, keySecret)}`,
+        },
+        body: JSON.stringify({
+          amount: 50000,
+          currency: "INR",
+          receipt: `rcpt_${session.userId.slice(0, 8)}_${Date.now()}`,
+        }),
       });
+
+      const rawText = await response.text();
+      let payload: RazorpayOrderResponse | null = null;
+
+      try {
+        payload = rawText
+          ? (JSON.parse(rawText) as RazorpayOrderResponse)
+          : null;
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        console.error("[order] Razorpay REST create failed:", {
+          status: response.status,
+          keyIdPrefix: `${keyId.slice(0, 8)}...`,
+          body: rawText,
+        });
+
+        const gatewayMessage =
+          payload?.error?.description ||
+          payload?.error?.reason ||
+          rawText ||
+          "Payment gateway unavailable";
+
+        if (response.status === 401 || response.status === 403) {
+          return NextResponse.json(
+            {
+              error:
+                "Online payment is temporarily unavailable. Please use QR payment or contact support.",
+            },
+            { status: 503 },
+          );
+        }
+
+        return NextResponse.json(
+          { error: `Payment gateway error: ${gatewayMessage}` },
+          { status: response.status },
+        );
+      }
+
+      order = payload;
     } catch (rzpErr) {
-      // Razorpay SDK errors are plain objects — log the full payload
-      console.error(
-        "[order] Razorpay orders.create failed:",
-        JSON.stringify(rzpErr),
-      );
-      const { message, status } = parseError(rzpErr);
+      console.error("[order] Razorpay REST request failed:", rzpErr);
+      const { message } = parseError(rzpErr);
       return NextResponse.json(
-        { error: `Payment gateway error: ${message}` },
-        { status },
+        {
+          error:
+            message === "fetch failed"
+              ? "Unable to reach payment gateway. Please try again in a moment."
+              : `Payment gateway error: ${message}`,
+        },
+        { status: 502 },
       );
     }
 
