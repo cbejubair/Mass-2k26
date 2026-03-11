@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       const { error } = await supabaseAdmin
         .from("payments")
         .update({
-          amount: 700,
+          amount: 500,
           screenshot_url: urlData.publicUrl,
           payment_status: "pending",
           payment_mode: "upi",
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     } else {
       const { error } = await supabaseAdmin.from("payments").insert({
         user_id: studentId,
-        amount: 700,
+        amount: 500,
         screenshot_url: urlData.publicUrl,
         payment_status: "pending",
         payment_mode: "upi",

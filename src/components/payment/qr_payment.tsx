@@ -109,7 +109,7 @@ export default function QrPayment({
     try {
       const formData = new FormData();
       formData.append("screenshot", file);
-      formData.append("amount", "700");
+      formData.append("amount", "500");
       formData.append("paymentMode", "upi");
       if (transactionRef.trim())
         formData.append("transactionRef", transactionRef.trim());
@@ -309,7 +309,7 @@ export default function QrPayment({
         <div className="text-sm space-y-1.5 text-center sm:text-left">
           <p className="font-bold text-foreground text-base">MASS 2K26</p>
           <p className="text-muted-foreground">Scan with any UPI app</p>
-          <p className="text-3xl font-black text-violet-400 mt-1">₹700</p>
+          <p className="text-3xl font-black text-violet-400 mt-1">₹500</p>
           <p className="text-xs text-muted-foreground">
             PhonePe · GPay · Paytm · BHIM
           </p>

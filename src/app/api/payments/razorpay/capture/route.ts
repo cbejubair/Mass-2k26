@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       const { error } = await supabaseAdmin
         .from("payments")
         .update({
-          amount: 700,
+          amount: 500,
           payment_status: "approved",
           payment_mode: "razorpay",
           transaction_ref: paymentId,
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     } else {
       const { error } = await supabaseAdmin.from("payments").insert({
         user_id: session.userId,
-        amount: 700,
+        amount: 500,
         payment_status: "approved",
         payment_mode: "razorpay",
         transaction_ref: paymentId,

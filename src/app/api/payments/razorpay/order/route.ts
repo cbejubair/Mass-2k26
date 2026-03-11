@@ -49,7 +49,7 @@ export async function POST() {
     }
 
     const order = await razorpay.orders.create({
-      amount: 70000, // ₹700 in paise
+      amount: 50000, // ₹500 in paise
       currency: "INR",
       receipt: `rcpt_${session.userId.slice(0, 8)}_${Date.now()}`,
     });

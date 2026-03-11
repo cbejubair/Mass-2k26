@@ -6,12 +6,12 @@ import { Plus, Minus } from "lucide-react";
 
 const faqs = [
   {
-    q: "What will the ₹700 budget be used for?",
+    q: "What will the ₹500 budget be used for?",
     a: "Stage setup, LED wall, DJ, professional lighting, sound system, videography, photography, and event production.",
   },
   {
-    q: "₹700 is too much considering exam fees and other payments.",
-    a: "Compared to most colleges (₹1000–₹1500 range), ₹700 is relatively moderate given the scale and production quality planned for MASS 2K26.",
+    q: "₹500 is too much considering exam fees and other payments.",
+    a: "Compared to most colleges (₹1000–₹1500 range), ₹500 is relatively moderate given the scale and production quality planned for MASS 2K26.",
   },
   {
     q: "Why can't it be reduced further?",
@@ -97,7 +97,6 @@ function FAQItem({
   const [open, setOpen] = useState(false);
 
   return (
-    
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}

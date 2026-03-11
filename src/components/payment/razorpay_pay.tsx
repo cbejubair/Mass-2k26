@@ -235,7 +235,7 @@ export default function RazorpayPay({
             <p className="text-xs text-indigo-400 font-medium uppercase tracking-wider">
               Event Entry Fee
             </p>
-            <p className="text-4xl font-black text-foreground mt-0.5">₹700</p>
+            <p className="text-4xl font-black text-foreground mt-0.5">₹500</p>
           </div>
           <div className="text-right space-y-0.5">
             <p className="text-sm font-semibold text-foreground">MASS 2K26</p>
@@ -283,7 +283,7 @@ export default function RazorpayPay({
             Opening Payment Gateway…
           </>
         ) : (
-          "Pay ₹700 via Razorpay"
+          "Pay ₹500 via Razorpay"
         )}
       </Button>
 
