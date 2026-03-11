@@ -4,6 +4,36 @@ import { requireAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { v4 as uuidv4 } from "uuid";
 
+function parseError(err: unknown): { message: string; status: number } {
+  if (typeof err === "string") {
+    return {
+      message: err,
+      status: err === "Unauthorized" ? 401 : err === "Forbidden" ? 403 : 500,
+    };
+  }
+  if (err instanceof Error) {
+    const msg = err.message;
+    return {
+      message: msg,
+      status: msg === "Unauthorized" ? 401 : msg === "Forbidden" ? 403 : 500,
+    };
+  }
+  if (err && typeof err === "object") {
+    const e = err as Record<string, unknown>;
+    const description =
+      (e.error as Record<string, unknown>)?.description ??
+      e.description ??
+      e.message ??
+      JSON.stringify(e);
+    const httpStatus = typeof e.statusCode === "number" ? e.statusCode : 500;
+    return {
+      message: String(description),
+      status: httpStatus >= 400 && httpStatus < 600 ? httpStatus : 500,
+    };
+  }
+  return { message: "Internal server error", status: 500 };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(["student"]);
@@ -149,10 +179,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, qrToken });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Internal server error";
-    const status =
-      message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;
+    console.error("[capture] unhandled error:", err);
+    const { message, status } = parseError(err);
     return NextResponse.json({ error: message }, { status });
   }
 }
