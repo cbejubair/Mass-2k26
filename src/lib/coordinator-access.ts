@@ -99,19 +99,16 @@ export async function getCoordinatorScope(
   };
 }
 
-export function applyStudentScope<T extends { eq: (...args: unknown[]) => T }>(
-  query: T,
-  scope: CoordinatorScope,
-): T {
+export function applyStudentScope<T>(query: T, scope: CoordinatorScope): T {
   if (scope.accessLevel === "class") {
-    return query
+    return (query as any)
       .eq("department", scope.department)
       .eq("year", scope.year)
       .eq("class_section", scope.classSection);
   }
 
   if (scope.accessLevel === "department") {
-    return query.eq("department", scope.department);
+    return (query as any).eq("department", scope.department);
   }
 
   return query;

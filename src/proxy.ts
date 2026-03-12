@@ -82,7 +82,7 @@ export async function proxy(req: NextRequest) {
 
   if (
     pathname.startsWith("/dashboard/coordinator") &&
-    !COORDINATOR_ROLES.has(role) &&
+    !COORDINATOR_ROLES.has(role as any) &&
     role !== "admin"
   ) {
     return NextResponse.redirect(new URL(getDashboard(role), req.url));
