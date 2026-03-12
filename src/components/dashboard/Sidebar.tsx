@@ -21,11 +21,13 @@ import {
   UserPlus,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { UserRole } from "@/lib/types";
 
 interface SidebarProps {
-  role: "admin" | "class_coordinator" | "student";
+  role: UserRole;
   userName: string;
 }
 
@@ -35,7 +37,7 @@ interface MenuItem {
   icon: LucideIcon;
 }
 
-const menuItems: Record<string, MenuItem[]> = {
+const menuItems: Partial<Record<UserRole, MenuItem[]>> = {
   admin: [
     { label: "Overview", path: "/dashboard/admin", icon: BarChart3 },
     { label: "Payments", path: "/dashboard/admin/payments", icon: CreditCard },
@@ -59,6 +61,36 @@ const menuItems: Record<string, MenuItem[]> = {
       icon: UserPlus,
     },
   ],
+  staff_coordinator: [
+    { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
+    { label: "Students", path: "/dashboard/coordinator/students", icon: Users },
+    {
+      label: "Payments",
+      path: "/dashboard/coordinator/payments",
+      icon: CreditCard,
+    },
+    {
+      label: "QR Scanner",
+      path: "/dashboard/coordinator/scanner",
+      icon: ScanLine,
+    },
+    { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
+  ],
+  overall_student_coordinator: [
+    { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
+    { label: "Students", path: "/dashboard/coordinator/students", icon: Users },
+    {
+      label: "Payments",
+      path: "/dashboard/coordinator/payments",
+      icon: CreditCard,
+    },
+    {
+      label: "QR Scanner",
+      path: "/dashboard/coordinator/scanner",
+      icon: ScanLine,
+    },
+    { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
+  ],
   class_coordinator: [
     { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
     { label: "Students", path: "/dashboard/coordinator/students", icon: Users },
@@ -67,6 +99,39 @@ const menuItems: Record<string, MenuItem[]> = {
       path: "/dashboard/coordinator/payments",
       icon: CreditCard,
     },
+    {
+      label: "QR Scanner",
+      path: "/dashboard/coordinator/scanner",
+      icon: ScanLine,
+    },
+    { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
+  ],
+  faculty_coordinator: [
+    { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
+    { label: "Students", path: "/dashboard/coordinator/students", icon: Users },
+    {
+      label: "QR Scanner",
+      path: "/dashboard/coordinator/scanner",
+      icon: ScanLine,
+    },
+    { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
+  ],
+  event_head: [
+    { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
+    { label: "Students", path: "/dashboard/coordinator/students", icon: Users },
+    { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
+  ],
+  technical_coordinator: [
+    { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
+    {
+      label: "QR Scanner",
+      path: "/dashboard/coordinator/scanner",
+      icon: ScanLine,
+    },
+    { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
+  ],
+  discipline_coordinator: [
+    { label: "Overview", path: "/dashboard/coordinator", icon: BarChart3 },
     {
       label: "QR Scanner",
       path: "/dashboard/coordinator/scanner",
@@ -88,6 +153,7 @@ const menuItems: Record<string, MenuItem[]> = {
     },
     { label: "QR Ticket", path: "/dashboard/student/qr", icon: Ticket },
     { label: "Survey", path: "/dashboard/student/survey", icon: FileText },
+    { label: "Settings", path: "/dashboard/student/settings", icon: Settings },
   ],
 };
 

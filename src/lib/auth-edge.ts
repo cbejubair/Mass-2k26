@@ -10,10 +10,11 @@
  * API routes and server components continue to use `@/lib/auth` (jsonwebtoken).
  */
 import { jwtVerify } from "jose";
+import type { UserRole } from "@/lib/types";
 
 export interface JWTPayload {
   userId: string;
-  role: "admin" | "class_coordinator" | "student";
+  role: UserRole;
   registerNumber: string | null;
   name: string;
   department: string | null;

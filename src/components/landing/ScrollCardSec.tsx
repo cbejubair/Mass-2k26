@@ -55,11 +55,11 @@ export default function ScrollCardSec() {
       {/* Background decoration */}
       <motion.div
         style={{ y }}
-        className="absolute top-20 right-0 w-72 h-72 rounded-full bg-purple-500/5 blur-3xl pointer-events-none"
+        className="absolute top-20 right-0 w-72 h-72 rounded-full bg-fuchsia-500/5 blur-3xl pointer-events-none"
       />
       <motion.div
         style={{ y: useTransform(scrollYProgress, [0, 1], [-50, 50]) }}
-        className="absolute bottom-20 left-0 w-96 h-96 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none"
+        className="absolute bottom-20 left-0 w-96 h-96 rounded-full bg-cyan-500/5 blur-3xl pointer-events-none"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -70,11 +70,8 @@ export default function ScrollCardSec() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Event{" "}
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Schedule
-            </span>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4">
+            Event <span className="text-amber-400">Schedule</span>
           </h2>
           <p className="text-neutral-400 max-w-2xl mx-auto text-lg">
             Single-day event timeline for March 28
@@ -93,7 +90,7 @@ export default function ScrollCardSec() {
             >
               <div className="rounded-2xl border border-white/10 bg-[hsl(240,10%,5.9%)] p-6 md:p-8">
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="px-4 py-1.5 rounded-full bg-purple-500/20 text-purple-400 font-semibold text-sm">
+                  <div className="px-4 py-1.5 rounded-full bg-fuchsia-500/15 text-fuchsia-400 font-semibold text-sm">
                     {day.day}
                   </div>
                   <div className="flex items-center gap-2 text-neutral-400 text-sm">
@@ -120,7 +117,7 @@ export default function ScrollCardSec() {
                           <Clock size={12} />
                           {event.time}
                         </div>
-                        <h4 className="text-white font-medium group-hover:text-purple-400 transition-colors">
+                        <h4 className="text-white font-medium group-hover:text-fuchsia-400 transition-colors">
                           {event.title}
                         </h4>
                         <div className="flex items-center gap-1.5 text-neutral-500 text-xs mt-1">

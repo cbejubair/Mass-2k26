@@ -62,10 +62,7 @@ export default function HighlightsCards() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Event{" "}
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Highlights
-            </span>
+            Event <span className="text-fuchsia-400">Highlights</span>
           </h2>
           <p className="text-neutral-400 max-w-2xl mx-auto text-lg">
             A jam-packed lineup of events that will keep you on the edge of your

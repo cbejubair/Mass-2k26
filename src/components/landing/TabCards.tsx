@@ -65,11 +65,8 @@ export default function TabCards() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Discover{" "}
-            <span className="bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-              MASS 2K26
-            </span>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-4">
+            Discover <span className="text-fuchsia-400">MASS 2K26</span>
           </h2>
         </motion.div>
 
@@ -88,7 +85,7 @@ export default function TabCards() {
               {activeTab === tab.id && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-purple-600 rounded-full"
+                  className="absolute inset-0 bg-fuchsia-500 rounded-full"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}

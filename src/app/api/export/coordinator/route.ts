@@ -1,21 +1,31 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import {
+  applyStudentScope,
+  getCoordinatorScope,
+} from "@/lib/coordinator-access";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 import * as XLSX from "xlsx";
 
 export async function GET() {
   try {
-    const session = await requireAuth(["class_coordinator"]);
+    const session = await requireAuth([...coordinatorDashboardRoles]);
+    const scope = await getCoordinatorScope(session);
 
-    // Fetch only students from coordinator's class
-    const { data: users } = await supabaseAdmin
+    if (!scope.canViewStats) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    let usersQuery = supabaseAdmin
       .from("users")
       .select("*")
       .eq("role", "student")
-      .eq("department", session.department!)
-      .eq("year", session.year!)
-      .eq("class_section", session.classSection!)
       .order("register_number");
+
+    usersQuery = applyStudentScope(usersQuery, scope);
+
+    const { data: users } = await usersQuery;
 
     if (!users || users.length === 0) {
       return NextResponse.json({ error: "No data to export" }, { status: 404 });
@@ -66,7 +76,7 @@ export async function GET() {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="Class_Report_${session.classSection}_${new Date().toISOString().split("T")[0]}.xlsx"`,
+        "Content-Disposition": `attachment; filename="Coordinator_Report_${scope.label.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx"`,
       },
     });
   } catch (err) {

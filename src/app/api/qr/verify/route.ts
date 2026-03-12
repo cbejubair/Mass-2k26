@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import { scannerCoordinatorRoles } from "@/lib/coordinator-access";
 
 /** Ordinal label: 1 → "1st", 2 → "2nd", etc. */
 function ordinal(n: number) {
@@ -11,7 +12,7 @@ function ordinal(n: number) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireAuth(["admin", "class_coordinator"]);
+    const session = await requireAuth(["admin", ...scannerCoordinatorRoles]);
     const { token } = await req.json();
 
     if (!token) {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     const { data: qrEntry, error } = await supabaseAdmin
       .from("entry_qr")
       .select(
-        "*, users!entry_qr_user_id_fkey(name, register_number, department, year, class_section)",
+        "*, users!entry_qr_user_id_fkey(name, register_number, department, year, class_section, photo_url)",
       )
       .eq("qr_token", token)
       .single();

@@ -24,6 +24,14 @@
   --color-ring: hsl(var(--ring));
   --radius: 0.625rem;
 
+  /* Festival accent colors */
+  --color-festival-rose: #f43f5e;
+  --color-festival-fuchsia: #d946ef;
+  --color-festival-cyan: #06b6d4;
+  --color-festival-amber: #f59e0b;
+  --color-festival-emerald: #10b981;
+  --color-festival-orange: #f97316;
+
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
@@ -44,7 +52,7 @@
   --card-foreground: 0 0% 98%;
   --popover: 240 10% 3.9%;
   --popover-foreground: 0 0% 98%;
-  --primary: 263.4 70% 50.4%;
+  --primary: 322 80% 55%;
   --primary-foreground: 0 0% 100%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
@@ -56,7 +64,7 @@
   --destructive-foreground: 0 0% 98%;
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --ring: 263.4 70% 50.4%;
+  --ring: 322 80% 55%;
 }
 
 * {
@@ -70,7 +78,7 @@ body {
 }
 
 .gradient-bg {
-  background: linear-gradient(135deg, hsl(240 20% 6%), hsl(260 40% 16%), hsl(240 20% 10%));
+  background: linear-gradient(135deg, hsl(240 20% 6%), hsl(280 15% 8%), hsl(240 15% 6%));
 }
 
 /* ================================================================== */
@@ -93,6 +101,26 @@ html {
   width: max-content;
 }
 
+/* ---------- Festival glow pulse ---------- */
+@keyframes festival-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(217, 70, 239, 0.15); }
+  50% { box-shadow: 0 0 30px rgba(217, 70, 239, 0.25); }
+}
+
+.animate-festival-glow {
+  animation: festival-glow 3s ease-in-out infinite;
+}
+
+/* ---------- Color shift for decorative elements ---------- */
+@keyframes color-shift {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.animate-color-shift {
+  animation: color-shift 20s linear infinite;
+}
+
 /* ---------- Scrollbar styling ---------- */
 ::-webkit-scrollbar {
   width: 6px;
@@ -101,9 +129,9 @@ html {
   background: hsl(240, 10%, 3.9%);
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(240, 3.7%, 15.9%);
+  background: hsl(322, 80%, 30%);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(263.4, 70%, 50.4%);
+  background: hsl(322, 80%, 55%);
 }

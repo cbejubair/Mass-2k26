@@ -1,45 +1,31 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import {
+  applyStudentScope,
+  getCoordinatorScope,
+} from "@/lib/coordinator-access";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 
 export async function GET() {
   try {
-    const session = await requireAuth(["class_coordinator"]);
+    const session = await requireAuth([...coordinatorDashboardRoles]);
+    const classScope = await getCoordinatorScope(session);
 
-    // JWT may be missing class fields on older tokens — always refresh from DB
-    const { data: coordinatorRow } = await supabaseAdmin
-      .from("users")
-      .select("department, year, class_section")
-      .eq("id", session.userId)
-      .single();
-
-    const dept = coordinatorRow?.department ?? session.department;
-    const yr = coordinatorRow?.year ?? session.year;
-    const section = coordinatorRow?.class_section ?? session.classSection;
-
-    if (!dept || !yr || !section) {
-      return NextResponse.json(
-        { error: "Coordinator has no class assignment. Contact admin." },
-        { status: 400 },
-      );
+    if (!classScope.canManagePayments) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const classScope = {
-      department: dept,
-      year: yr,
-      classSection: section,
-      label: `${dept} - ${yr} ${section}`,
-    };
-
     // Get students from coordinator's class (with full details for unpaid list)
-    const { data: students, error: studentsError } = await supabaseAdmin
+    let studentsQuery = supabaseAdmin
       .from("users")
       .select("id, name, register_number, department, year, class_section")
       .eq("role", "student")
-      .eq("department", dept)
-      .eq("year", yr)
-      .eq("class_section", section)
       .order("name", { ascending: true });
+
+    studentsQuery = applyStudentScope(studentsQuery, classScope);
+
+    const { data: students, error: studentsError } = await studentsQuery;
 
     if (studentsError) {
       console.error(

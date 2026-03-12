@@ -1,31 +1,35 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import {
+  applyStudentScope,
+  getCoordinatorScope,
+} from "@/lib/coordinator-access";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 
 export async function GET() {
   try {
-    const session = await requireAuth(["class_coordinator"]);
-    const classScope = {
-      department: session.department,
-      year: session.year,
-      classSection: session.classSection,
-      label: `${session.department || "-"} - ${session.year || "-"}${session.classSection ? ` ${session.classSection}` : ""}`,
-    };
+    const session = await requireAuth([...coordinatorDashboardRoles]);
+    const scope = await getCoordinatorScope(session);
 
-    // Get students from coordinator's class
-    const { data: students } = await supabaseAdmin
+    if (!scope.canViewStats) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    let studentQuery = supabaseAdmin
       .from("users")
       .select("id")
-      .eq("role", "student")
-      .eq("department", session.department!)
-      .eq("year", session.year!)
-      .eq("class_section", session.classSection!);
+      .eq("role", "student");
+
+    studentQuery = applyStudentScope(studentQuery, scope);
+
+    const { data: students } = await studentQuery;
 
     const studentIds = (students || []).map((s) => s.id);
 
     if (studentIds.length === 0) {
       return NextResponse.json({
-        classScope,
+        classScope: scope,
         paymentSummary: {
           totalPayments: 0,
           totalAmount: 0,
@@ -71,7 +75,7 @@ export async function GET() {
       .reduce((sum, p) => sum + (p.amount || 0), 0);
 
     return NextResponse.json({
-      classScope,
+      classScope: scope,
       paymentSummary: {
         totalPayments: payments.length,
         totalAmount,

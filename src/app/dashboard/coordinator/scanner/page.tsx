@@ -28,6 +28,7 @@ interface ScanResult {
     department: string;
     year: string;
     class_section: string;
+    photo_url?: string;
   };
 }
 
@@ -109,20 +110,47 @@ export default function CoordinatorScannerPage() {
                   {lastResult.message}
                 </p>
                 {lastResult.student && (
-                  <div className="mt-2 text-sm">
-                    <p>
-                      <span className="text-muted-foreground">Name:</span>{" "}
-                      {lastResult.student.name}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Reg No:</span>{" "}
-                      {lastResult.student.register_number}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Dept:</span>{" "}
-                      {lastResult.student.department} {lastResult.student.year}{" "}
-                      {lastResult.student.class_section}
-                    </p>
+                  <div className="mt-4 space-y-3">
+                    {/* Student Photo for face verification */}
+                    {lastResult.student.photo_url && (
+                      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border-2 border-white/20 bg-white/5">
+                          <img
+                            src={lastResult.student.photo_url}
+                            alt={lastResult.student.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1 pt-1">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+                            ⚠ Verify face before allowing entry
+                          </p>
+                          <p className="text-xs text-neutral-400">
+                            Compare the person with this registered photo
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Student details */}
+                    <div className="space-y-2 text-sm">
+                      <p>
+                        <span className="text-muted-foreground">Name:</span>{" "}
+                        <span className="font-semibold">
+                          {lastResult.student.name}
+                        </span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Reg No:</span>{" "}
+                        {lastResult.student.register_number}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Dept:</span>{" "}
+                        {lastResult.student.department}{" "}
+                        {lastResult.student.year}{" "}
+                        {lastResult.student.class_section}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

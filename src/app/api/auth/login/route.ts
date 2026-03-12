@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { signToken } from "@/lib/auth";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
       .from("users")
       .select("*")
       .eq("register_number", username.toUpperCase().trim())
-      .in("role", ["admin", "class_coordinator"])
+      .in("role", ["admin", ...coordinatorDashboardRoles])
       .single();
 
     if (error || !user) {

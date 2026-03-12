@@ -24,10 +24,7 @@ export default function GridImages() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Event{" "}
-            <span className="bg-gradient-to-r from-purple-400 to-emerald-400 bg-clip-text text-transparent">
-              Gallery
-            </span>
+            Event <span className="text-cyan-400">Gallery</span>
           </h2>
           <p className="text-neutral-400 max-w-2xl mx-auto text-lg">
             Moments captured from our past events
@@ -45,7 +42,7 @@ export default function GridImages() {
               className={`${img.span} relative group rounded-2xl overflow-hidden cursor-pointer`}
             >
               {/* Gradient placeholder (replace with actual images) */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-[hsl(240,10%,8%)] to-indigo-900/40" />
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-900/40 via-[hsl(240,10%,8%)] to-cyan-900/40" />
 
               {/* Center logo as placeholder */}
               <div className="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-50 transition-opacity">
@@ -57,14 +54,14 @@ export default function GridImages() {
               </div>
 
               {/* Hover overlay */}
-              <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/20 transition-all duration-300" />
+              <div className="absolute inset-0 bg-fuchsia-500/0 group-hover:bg-fuchsia-500/15 transition-all duration-300" />
 
               {/* Grid pattern overlay */}
               <div
                 className="absolute inset-0 opacity-10"
                 style={{
                   backgroundImage:
-                    "radial-gradient(circle, rgba(139,92,246,0.3) 1px, transparent 1px)",
+                    "radial-gradient(circle, rgba(217,70,239,0.3) 1px, transparent 1px)",
                   backgroundSize: "20px 20px",
                 }}
               />

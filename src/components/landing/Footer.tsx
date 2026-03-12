@@ -8,8 +8,8 @@ import { Instagram, Youtube, Globe, Mail, MapPin, Phone } from "lucide-react";
 export default function Footer() {
   return (
     <footer id="contact" className="relative bg-black border-t border-white/10">
-      {/* Gradient top border */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+      {/* Solid accent top border */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-fuchsia-500" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
@@ -24,52 +24,36 @@ export default function Footer() {
                   className="object-cover"
                 />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent">
-                MASS 2K26
+              <span className="text-xl font-bold text-white">
+                MASS <span className="text-fuchsia-400">2K26</span>
               </span>
             </Link>
             <p className="text-neutral-400 text-sm leading-relaxed mt-4">
               The ultimate cultural extravaganza. Experience art, music, dance,
               and creativity under one roof.
             </p>
-            {/* <div className="flex items-center gap-3 mt-6">
-              <a
-                href="#"
-                className="p-2 rounded-full bg-white/5 hover:bg-purple-500/20 text-neutral-400 hover:text-purple-400 transition-all"
-              >
-                <Instagram size={18} />
-              </a>
-              <a
-                href="#"
-                className="p-2 rounded-full bg-white/5 hover:bg-purple-500/20 text-neutral-400 hover:text-purple-400 transition-all"
-              >
-                <Youtube size={18} />
-              </a>
-              <a
-                href="#"
-                className="p-2 rounded-full bg-white/5 hover:bg-purple-500/20 text-neutral-400 hover:text-purple-400 transition-all"
-              >
-                <Globe size={18} />
-              </a>
-            </div> */}
           </div>
 
           {/* Quick Links */}
           <div>
             <h3 className="text-white font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-3">
-              {["Home", "About", "Events", "Highlights", "Gallery"].map(
-                (item) => (
-                  <li key={item}>
-                    <a
-                      href={`#${item.toLowerCase()}`}
-                      className="text-neutral-400 hover:text-purple-400 text-sm transition-colors"
-                    >
-                      {item}
-                    </a>
-                  </li>
-                ),
-              )}
+              {[
+                { name: "Home", href: "/" },
+                { name: "Events", href: "/events" },
+                { name: "Rules & Discipline", href: "/rules" },
+                { name: "FAQ", href: "/faq" },
+                { name: "Login / Register", href: "/login" },
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className="text-neutral-400 hover:text-fuchsia-400 text-sm transition-colors"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -78,14 +62,20 @@ export default function Footer() {
             <h3 className="text-white font-semibold mb-4">Events</h3>
             <ul className="space-y-3">
               {[
-                "Music Night",
-                "Group Dance",
                 "Solo Dance",
-                "Kerokee",
-                "Instrumental",
+                "Group Dance",
+                "Solo Singing",
+                "Karaoke",
+                "DJ Night",
+                "Skit / Drama",
               ].map((item) => (
                 <li key={item}>
-                  <span className="text-neutral-400 text-sm">{item}</span>
+                  <Link
+                    href="/events"
+                    className="text-neutral-400 hover:text-cyan-400 text-sm transition-colors"
+                  >
+                    {item}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -96,15 +86,15 @@ export default function Footer() {
             <h3 className="text-white font-semibold mb-4">Contact</h3>
             <ul className="space-y-3">
               <li className="flex items-center gap-3 text-neutral-400 text-sm">
-                <MapPin size={16} className="text-purple-400 shrink-0" />
-                PPG it College Ground
+                <MapPin size={16} className="text-rose-400 shrink-0" />
+                PPG IT College Ground
               </li>
               <li className="flex items-center gap-3 text-neutral-400 text-sm">
-                <Mail size={16} className="text-purple-400 shrink-0" />
+                <Mail size={16} className="text-cyan-400 shrink-0" />
                 fineartsclub@ppg.edu.in
               </li>
               <li className="flex items-center gap-3 text-neutral-400 text-sm">
-                <Phone size={16} className="text-purple-400 shrink-0" />
+                <Phone size={16} className="text-amber-400 shrink-0" />
                 +91 84384 33361
               </li>
             </ul>
@@ -114,8 +104,20 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-16 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-neutral-500 text-sm">
-            Made with <span className="text-purple-400">♥</span> by the Abishek & Team.
+            Made with <span className="text-rose-400">♥</span> by Abishek &
+            Team.
           </p>
+          <div className="flex items-center gap-4 text-neutral-500 text-xs">
+            <Link href="/rules" className="hover:text-white transition-colors">
+              Rules
+            </Link>
+            <Link href="/faq" className="hover:text-white transition-colors">
+              FAQ
+            </Link>
+            <Link href="/events" className="hover:text-white transition-colors">
+              Events
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

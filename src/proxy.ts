@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyTokenEdge } from "@/lib/auth-edge";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 
-const publicPaths = ["/api/auth/login", "/api/qr/verify"];
+const publicPaths = [
+  "/api/auth/login",
+  "/api/qr/verify",
+  "/api/stats",
+  "/api/agenda",
+];
+
+const publicPages = ["/events", "/faq", "/rules", "/coordinators"];
 
 const DASHBOARD_MAP: Record<string, string> = {
   admin: "/dashboard/admin",
+  staff_coordinator: "/dashboard/coordinator",
   class_coordinator: "/dashboard/coordinator",
+  faculty_coordinator: "/dashboard/coordinator",
+  overall_student_coordinator: "/dashboard/coordinator",
+  event_head: "/dashboard/coordinator",
+  technical_coordinator: "/dashboard/coordinator",
+  discipline_coordinator: "/dashboard/coordinator",
   student: "/dashboard/student",
 };
+
+const COORDINATOR_ROLES = new Set(coordinatorDashboardRoles);
 
 function getDashboard(role: string): string {
   return DASHBOARD_MAP[role] || "/dashboard/student";
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow static files and Next.js internals
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -25,40 +40,40 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow public API paths (no auth needed)
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  if (publicPaths.some((path) => pathname.startsWith(path))) {
+    return NextResponse.next();
+  }
+
+  if (publicPages.some((page) => pathname.startsWith(page))) {
     return NextResponse.next();
   }
 
   const token = req.cookies.get("session_token")?.value;
   const session = token ? await verifyTokenEdge(token) : null;
 
-  // --- Handle /login and / (root) for authenticated users ---
   if (pathname === "/login" || pathname === "/") {
     if (session) {
-      // Already logged in — redirect to role-based dashboard
       return NextResponse.redirect(
         new URL(getDashboard(session.role), req.url),
       );
     }
-    // Not logged in: allow both / (landing page) and /login
+
     return NextResponse.next();
   }
 
-  // --- Protected routes: require valid session ---
   if (!session) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // Clear stale cookie and redirect to login
+
     const response = NextResponse.redirect(new URL("/login", req.url));
     if (token) {
       response.cookies.set("session_token", "", { maxAge: 0, path: "/" });
     }
+
     return response;
   }
 
-  // --- Role-based route protection for dashboard pages ---
   const role = session.role;
 
   if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
@@ -67,7 +82,7 @@ export async function middleware(req: NextRequest) {
 
   if (
     pathname.startsWith("/dashboard/coordinator") &&
-    role !== "class_coordinator" &&
+    !COORDINATOR_ROLES.has(role) &&
     role !== "admin"
   ) {
     return NextResponse.redirect(new URL(getDashboard(role), req.url));

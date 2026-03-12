@@ -110,7 +110,7 @@ export default function Sliders() {
                 onClick={() => goTo(index)}
                 className={`w-2 h-2 rounded-full transition-all ${
                   index === current
-                    ? "bg-purple-500 w-6"
+                    ? "bg-fuchsia-500 w-6"
                     : "bg-white/30 hover:bg-white/50"
                 }`}
               />

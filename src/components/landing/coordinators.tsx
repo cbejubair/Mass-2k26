@@ -569,7 +569,7 @@ export default function CoordinatorsSection() {
   return (
     <section id="coordinators" className="relative py-24">
       {/* Ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-purple-600/8 blur-[130px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-fuchsia-500/5 blur-[130px] rounded-full pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* ── Section heading ── */}
@@ -579,15 +579,12 @@ export default function CoordinatorsSection() {
           viewport={{ once: true }}
           className="text-center mb-14"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 text-xs font-medium mb-4">
             <Users className="w-3.5 h-3.5" />
             Meet the Team
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-            Event{" "}
-            <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-500 bg-clip-text text-transparent">
-              Coordinators
-            </span>
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+            Event <span className="text-fuchsia-400">Coordinators</span>
           </h2>
           <p className="mt-4 text-neutral-500 text-sm max-w-xl mx-auto leading-relaxed">
             The dedicated student &amp; staff coordinators making MASS 2K26
@@ -684,7 +681,7 @@ export default function CoordinatorsSection() {
               whileTap={{ scale: 0.95 }}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
                 activeTab === tab
-                  ? "bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-sm shadow-purple-500/20"
+                  ? "bg-fuchsia-500/15 border-fuchsia-500/40 text-fuchsia-300"
                   : "border-white/10 text-neutral-500 hover:text-neutral-300 hover:border-white/20"
               }`}
             >

@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
+import {
+  getCoordinatorScope,
+  paymentCoordinatorRoles,
+} from "@/lib/coordinator-access";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireAuth(["admin", "class_coordinator"]);
+    const session = await requireAuth(["admin", ...paymentCoordinatorRoles]);
     const { paymentId, status } = await req.json();
 
     if (!paymentId || !["approved", "rejected"].includes(status)) {
@@ -15,8 +19,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // If coordinator, check they can only verify their class
-    if (session.role === "class_coordinator") {
+    if (session.role !== "admin") {
+      const scope = await getCoordinatorScope(session);
+
+      if (!scope.canManagePayments) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
       const { data: payment } = await supabaseAdmin
         .from("payments")
         .select(
@@ -33,13 +42,23 @@ export async function POST(req: NextRequest) {
       }
 
       const student = (payment as any).users;
-      if (
-        student.department !== session.department ||
-        student.year !== session.year ||
-        student.class_section !== session.classSection
+      if (scope.accessLevel === "class") {
+        if (
+          student.department !== scope.department ||
+          student.year !== scope.year ||
+          student.class_section !== scope.classSection
+        ) {
+          return NextResponse.json(
+            { error: "You can only verify payments for your assigned class" },
+            { status: 403 },
+          );
+        }
+      } else if (
+        scope.accessLevel === "department" &&
+        student.department !== scope.department
       ) {
         return NextResponse.json(
-          { error: "You can only verify payments for your class" },
+          { error: "You can only verify payments for your department" },
           { status: 403 },
         );
       }

@@ -1,4 +1,13 @@
-export type UserRole = "admin" | "class_coordinator" | "student";
+export type UserRole =
+  | "admin"
+  | "staff_coordinator"
+  | "class_coordinator"
+  | "faculty_coordinator"
+  | "overall_student_coordinator"
+  | "event_head"
+  | "technical_coordinator"
+  | "discipline_coordinator"
+  | "student";
 
 export interface User {
   id: string;

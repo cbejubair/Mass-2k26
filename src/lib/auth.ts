@@ -1,11 +1,12 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
+import type { UserRole } from "@/lib/types";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
 export interface JWTPayload {
   userId: string;
-  role: "admin" | "class_coordinator" | "student";
+  role: UserRole;
   registerNumber: string | null;
   name: string;
   department: string | null;

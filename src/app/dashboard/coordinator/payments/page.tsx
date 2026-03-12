@@ -370,11 +370,11 @@ export default function CoordinatorPaymentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold">Payment Verification</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Coordinator Payments</h1>
         <p className="text-muted-foreground text-sm mt-1">
           {classScope
-            ? `Class Map: ${classScope.label}`
-            : "Class-mapped payment approvals"}
+            ? `Scope: ${classScope.label}`
+            : "Payment approvals for your assigned routing scope"}
         </p>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import {
   Card,
@@ -20,7 +20,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Shield, Loader2, AlertCircle } from "lucide-react";
+import {
+  GraduationCap,
+  Shield,
+  Loader2,
+  AlertCircle,
+  Sparkles,
+  Camera,
+  X,
+} from "lucide-react";
+
+// ── Register number decoder ──────────────────────────────────────────
+// Format: 7125 | YY | DDD | RRR  (12 digits)
+const YEAR_MAP: Record<string, string> = {
+  "22": "IV",
+  "23": "III",
+  "24": "II",
+  "25": "I",
+};
+
+const DEPT_MAP: Record<string, string> = {
+  "104": "CSE",
+  "205": "IT",
+  "243": "AIDS",
+  "148": "AIML",
+  "121": "BME",
+  "225": "AGRI",
+  "106": "ECE",
+  "114": "MECH",
+};
+
+function deriveFromRegNumber(
+  regNum: string,
+): { year: string; department: string } | null {
+  if (regNum.length !== 12 || !regNum.startsWith("7125")) return null;
+  const yearCode = regNum.slice(4, 6);
+  const deptCode = regNum.slice(6, 9);
+  const year = YEAR_MAP[yearCode];
+  const department = DEPT_MAP[deptCode];
+  if (!year || !department) return null;
+  return { year, department };
+}
 
 const DASHBOARD_PATHS: Record<string, string> = {
   admin: "/dashboard/admin",
@@ -37,6 +77,12 @@ export default function LoginPage() {
   const [classSection, setClassSection] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [needsDetails, setNeedsDetails] = useState(false);
+  const [autoDetected, setAutoDetected] = useState(false);
+
+  // Photo state
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Admin state
   const [adminUsername, setAdminUsername] = useState("");
@@ -88,6 +134,21 @@ export default function LoginPage() {
         }
 
         setRedirecting(true);
+
+        // Upload photo if selected (session cookie already set by login)
+        if (needsDetails && photoFile) {
+          try {
+            const formData = new FormData();
+            formData.append("photo", photoFile);
+            await fetch("/api/auth/profile/image", {
+              method: "POST",
+              body: formData,
+            });
+          } catch {
+            // Non-fatal: user can upload from Settings later
+          }
+        }
+
         window.location.href = DASHBOARD_PATHS.student;
       } catch {
         setError("Network error. Please try again.");
@@ -102,6 +163,7 @@ export default function LoginPage() {
       year,
       classSection,
       mobileNumber,
+      photoFile,
     ],
   );
 
@@ -250,6 +312,18 @@ export default function LoginPage() {
                         setRegisterNumber(value);
                         setNeedsDetails(false);
                         setError("");
+
+                        // Auto-derive year & department
+                        const derived = deriveFromRegNumber(value);
+                        if (derived) {
+                          setYear(derived.year);
+                          setDepartment(derived.department);
+                          setAutoDetected(true);
+                        } else {
+                          setAutoDetected(false);
+                          setYear("");
+                          setDepartment("");
+                        }
                       }}
                       placeholder="e.g. 712525000000"
                       pattern="7125\d{8}"
@@ -261,10 +335,47 @@ export default function LoginPage() {
                     <p className="text-[11px] text-muted-foreground/60">
                       Must start with 7125 (12 digits total)
                     </p>
+                    {/* Live auto-detect preview */}
+                    {registerNumber.length === 12 && (
+                      <div
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+                          autoDetected
+                            ? "bg-emerald-950/30 border border-emerald-500/20 text-emerald-300"
+                            : "bg-amber-950/30 border border-amber-500/20 text-amber-400"
+                        }`}
+                      >
+                        {autoDetected ? (
+                          <>
+                            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              Detected: <strong>{department}</strong> dept
+                              &middot; <strong>Year {year}</strong>
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                            <span>
+                              Department/year could not be detected — please
+                              fill manually
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {needsDetails && (
                     <div className="space-y-3 rounded-xl border border-purple-500/20 bg-purple-950/20 p-4">
+                      {autoDetected && (
+                        <div className="flex items-center gap-2 rounded-lg bg-emerald-950/40 border border-emerald-500/20 px-3 py-2">
+                          <Sparkles className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <p className="text-xs text-emerald-300">
+                            Year &amp; department auto-detected from your
+                            register number
+                          </p>
+                        </div>
+                      )}
                       <p className="text-xs font-semibold text-purple-300 uppercase tracking-wide">
                         New student — fill your details
                       </p>
@@ -286,18 +397,34 @@ export default function LoginPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label
-                            htmlFor="dept"
-                            className="text-xs text-muted-foreground"
-                          >
-                            Department
-                          </Label>
+                          <div className="flex items-center justify-between">
+                            <Label
+                              htmlFor="dept"
+                              className="text-xs text-muted-foreground"
+                            >
+                              Department
+                            </Label>
+                            {autoDetected && department && (
+                              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 rounded px-1.5 py-0.5">
+                                Auto ✓
+                              </span>
+                            )}
+                          </div>
                           <Select
                             value={department}
-                            onValueChange={setDepartment}
+                            onValueChange={(v) => {
+                              setDepartment(v);
+                              setAutoDetected(false);
+                            }}
                             required
                           >
-                            <SelectTrigger className="bg-white/5 border-white/10 h-10">
+                            <SelectTrigger
+                              className={`h-10 border-white/10 ${
+                                autoDetected && department
+                                  ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                                  : "bg-white/5"
+                              }`}
+                            >
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
@@ -319,14 +446,34 @@ export default function LoginPage() {
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label
-                            htmlFor="year"
-                            className="text-xs text-muted-foreground"
+                          <div className="flex items-center justify-between">
+                            <Label
+                              htmlFor="year"
+                              className="text-xs text-muted-foreground"
+                            >
+                              Year
+                            </Label>
+                            {autoDetected && year && (
+                              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 rounded px-1.5 py-0.5">
+                                Auto ✓
+                              </span>
+                            )}
+                          </div>
+                          <Select
+                            value={year}
+                            onValueChange={(v) => {
+                              setYear(v);
+                              setAutoDetected(false);
+                            }}
+                            required
                           >
-                            Year
-                          </Label>
-                          <Select value={year} onValueChange={setYear} required>
-                            <SelectTrigger className="bg-white/5 border-white/10 h-10">
+                            <SelectTrigger
+                              className={`h-10 border-white/10 ${
+                                autoDetected && year
+                                  ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300"
+                                  : "bg-white/5"
+                              }`}
+                            >
                               <SelectValue placeholder="Year" />
                             </SelectTrigger>
                             <SelectContent>
@@ -389,6 +536,81 @@ export default function LoginPage() {
                             className="bg-white/5 border-white/10 focus:border-purple-500/60 h-10"
                           />
                         </div>
+                      </div>
+
+                      {/* Photo Upload */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">
+                          Profile Photo{" "}
+                          <span className="text-purple-400">(optional)</span>
+                        </Label>
+                        <div className="flex items-center gap-3">
+                          {photoPreview ? (
+                            <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-white/20">
+                              <img
+                                src={photoPreview}
+                                alt="Preview"
+                                className="h-full w-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPhotoFile(null);
+                                  setPhotoPreview(null);
+                                  if (photoInputRef.current)
+                                    photoInputRef.current.value = "";
+                                }}
+                                className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-white flex items-center justify-center"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="h-14 w-14 flex-shrink-0 rounded-lg border border-dashed border-white/20 bg-white/5 flex items-center justify-center">
+                              <Camera className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => photoInputRef.current?.click()}
+                              className="border-white/10 bg-white/5 text-xs h-8"
+                            >
+                              <Camera className="h-3 w-3 mr-1.5" />
+                              {photoFile ? "Change Photo" : "Add Photo"}
+                            </Button>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Used for QR entry verification. JPEG/PNG/WebP, max
+                              5MB.
+                            </p>
+                          </div>
+                        </div>
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (
+                              ![
+                                "image/jpeg",
+                                "image/png",
+                                "image/webp",
+                              ].includes(file.type)
+                            )
+                              return;
+                            if (file.size > 5 * 1024 * 1024) return;
+                            setPhotoFile(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () =>
+                              setPhotoPreview(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }}
+                        />
                       </div>
                     </div>
                   )}

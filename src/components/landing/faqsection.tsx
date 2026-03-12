@@ -104,7 +104,7 @@ function FAQItem({
       viewport={{ once: true }}
       className={`rounded-xl border transition-colors duration-200 overflow-hidden ${
         open
-          ? "border-purple-500/40 bg-purple-950/20"
+          ? "border-fuchsia-500/30 bg-fuchsia-950/10"
           : "border-white/5 bg-white/[0.02] hover:border-white/10"
       }`}
     >
@@ -114,14 +114,14 @@ function FAQItem({
         aria-expanded={open}
       >
         <span className="flex items-start gap-3">
-          <span className="mt-0.5 min-w-[1.5rem] text-xs font-mono text-purple-500/60 select-none">
+          <span className="mt-0.5 min-w-[1.5rem] text-xs font-mono text-fuchsia-500/50 select-none">
             {String(index + 1).padStart(2, "0")}
           </span>
           <span className="text-sm font-medium text-neutral-200 leading-snug">
             {item.q}
           </span>
         </span>
-        <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full border border-white/10 text-purple-400">
+        <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full border border-white/10 text-fuchsia-400">
           {open ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
         </span>
       </button>
@@ -151,7 +151,7 @@ export default function FAQSection() {
     <section id="faq" className="relative py-24">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="w-[600px] h-[400px] rounded-full bg-purple-900/10 blur-3xl" />
+        <div className="w-[600px] h-[400px] rounded-full bg-fuchsia-900/10 blur-3xl" />
       </div>
 
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -163,11 +163,11 @@ export default function FAQSection() {
           viewport={{ once: true }}
           className="text-center mb-14"
         >
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs mb-4">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-fuchsia-400 text-xs mb-4">
             Got Questions?
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent">
-            Frequently Asked Questions
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
+            Frequently Asked <span className="text-fuchsia-400">Questions</span>
           </h2>
           <p className="mt-3 text-sm text-neutral-500 max-w-md mx-auto">
             Everything students want to know about MASS 2K26 — answered

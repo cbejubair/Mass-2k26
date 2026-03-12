@@ -115,10 +115,12 @@ export default function CoordinatorStudentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Class Students</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">
+            Coordinator Students
+          </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {classScope
-              ? `Class: ${classScope.label} — ${students.length} student(s)`
+              ? `Scope: ${classScope.label} — ${students.length} student(s)`
               : `${students.length} student(s)`}
           </p>
         </div>

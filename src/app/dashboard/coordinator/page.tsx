@@ -75,15 +75,13 @@ export default function CoordinatorDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold">
-          Class Coordinator Dashboard
-        </h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Coordinator Dashboard</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          View and manage your class students
+          View and manage students within your assigned routing scope
         </p>
         {classScope && (
           <div className="mt-2">
-            <Badge variant="secondary">Class Map: {classScope.label}</Badge>
+            <Badge variant="secondary">Scope: {classScope.label}</Badge>
           </div>
         )}
       </div>
@@ -97,7 +95,7 @@ export default function CoordinatorDashboard() {
           color="indigo"
         />
         <StatCard
-          title="Class Students"
+          title="Scoped Students"
           value={stats.totalStudents}
           icon="👥"
           color="purple"
