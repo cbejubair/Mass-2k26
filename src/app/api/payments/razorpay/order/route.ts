@@ -61,7 +61,7 @@ type RazorpayOrderResponse = {
 
 export async function POST() {
   try {
-    const session = await requireAuth(["student"]);
+    const session = await requireAuth(["student", "class_coordinator"]);
 
     const keyId = normalizeEnv(process.env.RAZORPAY_KEY_ID);
     const keySecret = normalizeEnv(process.env.RAZORPAY_KEY_SECRET);
@@ -151,7 +151,7 @@ export async function POST() {
           return NextResponse.json(
             {
               error:
-                "Online payment is temporarily unavailable. Please use QR payment or contact support.",
+                "Online payment is temporarily unavailable. Please contact support.",
             },
             { status: 503 },
           );

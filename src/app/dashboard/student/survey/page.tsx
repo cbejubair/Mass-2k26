@@ -37,7 +37,8 @@ const stallItems = [
   { value: "mojito", label: "🍹 Mojito" },
   { value: "momos", label: "🥟 Momos" },
   { value: "sprinkle_potato", label: "🥔 Sprinkle Potato" },
-  { value: "directs", label: "🍽️ Directs" },
+  { value: "dessert", label: "🍮 Dessert" },
+  { value: "ice_cream", label: "🍦 Ice Cream" },
   { value: "neon_vibe", label: "✨ Neon Vibe Items" },
   { value: "fancy_items", label: "🎀 Fancy / Accessories" },
 ];

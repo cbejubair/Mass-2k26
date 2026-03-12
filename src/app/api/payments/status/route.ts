@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET() {
   try {
-    const session = await requireAuth(["student"]);
+    const session = await requireAuth(["student", "class_coordinator"]);
 
     const { data: payment } = await supabaseAdmin
       .from("payments")

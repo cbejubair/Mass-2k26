@@ -13,7 +13,6 @@ import {
   ExternalLink,
 } from "lucide-react";
 import RazorpayPay from "@/components/payment/razorpay_pay";
-import QrPayment from "@/components/payment/qr_payment";
 import QRDisplay from "@/components/qr/QRDisplay";
 
 interface UserProfile {
@@ -37,14 +36,11 @@ interface EntryQR {
   is_active: boolean;
 }
 
-type PayMethod = "razorpay" | "upi";
-
 export default function PaymentPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [payment, setPayment] = useState<ExistingPayment | null>(null);
   const [entryQr, setEntryQr] = useState<EntryQR | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
-  const [tab, setTab] = useState<PayMethod>("razorpay");
   const router = useRouter();
 
   useEffect(() => {
@@ -268,8 +264,8 @@ export default function PaymentPage() {
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
           {isRejected
-            ? "Your previous payment was rejected. Please submit again."
-            : "Choose a payment method to register for MASS 2K26."}
+            ? "Your previous payment was rejected. Please pay again using Razorpay."
+            : "Complete your ₹500 registration using Razorpay."}
         </p>
       </div>
 
@@ -280,41 +276,10 @@ export default function PaymentPage() {
         </div>
       )}
 
-      {/* Tab switcher */}
-      <div className="grid grid-cols-2 gap-2 bg-muted/40 rounded-xl p-1 border border-border">
-        <button
-          onClick={() => setTab("razorpay")}
-          className={`rounded-lg py-2.5 px-4 text-sm font-medium transition-all ${
-            tab === "razorpay"
-              ? "bg-background shadow-sm text-foreground border border-border"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Online Payment
-        </button>
-        <button
-          onClick={() => setTab("upi")}
-          className={`rounded-lg py-2.5 px-4 text-sm font-medium transition-all ${
-            tab === "upi"
-              ? "bg-background shadow-sm text-foreground border border-border"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          UPI / Manual
-        </button>
-      </div>
-
-      {tab === "razorpay" ? (
-        <RazorpayPay
-          studentName={profile?.name ?? ""}
-          registerNumber={profile?.registerNumber ?? ""}
-        />
-      ) : (
-        <QrPayment
-          studentName={profile?.name ?? ""}
-          registerNumber={profile?.registerNumber ?? ""}
-        />
-      )}
+      <RazorpayPay
+        studentName={profile?.name ?? ""}
+        registerNumber={profile?.registerNumber ?? ""}
+      />
     </div>
   );
 }

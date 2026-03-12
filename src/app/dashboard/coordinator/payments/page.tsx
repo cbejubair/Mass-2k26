@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import RazorpayPay from "@/components/payment/razorpay_pay";
+import QRDisplay from "@/components/qr/QRDisplay";
 import {
   Table,
   TableBody,
@@ -12,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Upload, Users, X, CheckCircle2 } from "lucide-react";
+import { Loader2, X, CheckCircle2, Clock, ExternalLink } from "lucide-react";
 
 interface UnpaidStudent {
   id: string;
@@ -60,6 +62,228 @@ interface PaymentSummary {
   pendingAmount: number;
 }
 
+interface SelfProfile {
+  name: string;
+  registerNumber: string | null;
+}
+
+interface SelfPayment {
+  id: string;
+  amount: number;
+  payment_status: "pending" | "approved" | "rejected";
+  payment_mode: string;
+  transaction_ref: string | null;
+  screenshot_url: string;
+  created_at: string;
+  verified_at?: string | null;
+}
+
+interface EntryQR {
+  qr_token: string;
+  is_active: boolean;
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center gap-4">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+function CoordinatorSelfPaymentCard() {
+  const [profile, setProfile] = useState<SelfProfile | null>(null);
+  const [payment, setPayment] = useState<SelfPayment | null>(null);
+  const [entryQr, setEntryQr] = useState<EntryQR | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const [profileRes, paymentRes] = await Promise.all([
+          fetch("/api/auth/me").then((r) => r.json()),
+          fetch("/api/payments/status").then((r) => r.json()),
+        ]);
+
+        setProfile({
+          name: profileRes.name ?? "",
+          registerNumber: profileRes.registerNumber ?? "",
+        });
+
+        if (paymentRes.payment) {
+          setPayment(paymentRes.payment);
+          if (paymentRes.payment.payment_status === "approved") {
+            const qrRes = await fetch("/api/qr/generate", { method: "POST" });
+            const qrData = await qrRes.json();
+            if (qrData.qr) setEntryQr(qrData.qr);
+          }
+        }
+      } catch {
+        // ignore; card will stay in fallback state
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    init();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6 flex items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (payment?.payment_status === "approved") {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">My Entry Payment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 text-green-400 shrink-0" />
+            <div>
+              <p className="font-semibold">Payment Approved</p>
+              <p className="text-xs text-muted-foreground">
+                Your class coordinator entry fee has been confirmed.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-muted/40 border border-border p-4 space-y-3 text-sm">
+            <InfoRow
+              label="Amount"
+              value={`₹${payment.amount.toLocaleString()}`}
+            />
+            <InfoRow
+              label="Mode"
+              value={<span className="capitalize">{payment.payment_mode}</span>}
+            />
+            {payment.transaction_ref && (
+              <InfoRow
+                label="Transaction Ref"
+                value={
+                  <span className="font-mono text-xs">
+                    {payment.transaction_ref}
+                  </span>
+                }
+              />
+            )}
+            {payment.verified_at && (
+              <InfoRow
+                label="Approved On"
+                value={
+                  <span className="text-xs">
+                    {new Date(payment.verified_at).toLocaleString("en-IN")}
+                  </span>
+                }
+              />
+            )}
+            {payment.screenshot_url &&
+              !payment.screenshot_url.startsWith("razorpay:") && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Screenshot</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      window.open(payment.screenshot_url, "_blank")
+                    }
+                    className="text-primary hover:underline flex items-center gap-1 h-auto p-0"
+                  >
+                    Preview <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+          </div>
+
+          {entryQr && profile ? (
+            <QRDisplay
+              token={entryQr.qr_token}
+              studentName={profile.name}
+              registerNumber={profile.registerNumber ?? ""}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground text-center">
+              Generating your QR…
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (payment?.payment_status === "pending") {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">My Entry Payment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center gap-3">
+            <Clock className="h-6 w-6 text-amber-400 shrink-0" />
+            <div>
+              <p className="font-semibold">Awaiting Verification</p>
+              <p className="text-xs text-muted-foreground">
+                Your payment is being reviewed.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-muted/40 border border-border p-4 space-y-3 text-sm">
+            <InfoRow
+              label="Amount"
+              value={`₹${payment.amount.toLocaleString()}`}
+            />
+            <InfoRow
+              label="Status"
+              value={<Badge variant="secondary">Pending</Badge>}
+            />
+            <InfoRow
+              label="Mode"
+              value={<span className="capitalize">{payment.payment_mode}</span>}
+            />
+            {payment.transaction_ref && (
+              <InfoRow
+                label="UTR / Ref"
+                value={
+                  <span className="font-mono text-xs">
+                    {payment.transaction_ref}
+                  </span>
+                }
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">My Entry Payment</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Class coordinators can also complete the ₹500 entry fee here using
+          Razorpay.
+        </p>
+        <RazorpayPay
+          studentName={profile?.name ?? ""}
+          registerNumber={profile?.registerNumber ?? ""}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function CoordinatorPaymentsPage() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,19 +300,6 @@ export default function CoordinatorPaymentsPage() {
     pendingAmount: 0,
   });
 
-  // Upload panel state
-  const [unpaidStudents, setUnpaidStudents] = useState<UnpaidStudent[]>([]);
-  const [showUploadPanel, setShowUploadPanel] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [transactionRef, setTransactionRef] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     fetchPayments();
   }, []);
@@ -100,52 +311,10 @@ export default function CoordinatorPaymentsPage() {
       setPayments(data.payments || []);
       if (data.classScope) setClassScope(data.classScope);
       if (data.summary) setSummary(data.summary);
-      if (data.unpaidStudents) setUnpaidStudents(data.unpaidStudents);
     } catch {
       console.error("Failed to fetch payments");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedStudentId || !uploadFile) {
-      setUploadMsg({
-        type: "error",
-        text: "Select a student and attach a screenshot.",
-      });
-      return;
-    }
-    setUploading(true);
-    setUploadMsg(null);
-    const fd = new FormData();
-    fd.append("studentId", selectedStudentId);
-    fd.append("screenshot", uploadFile);
-    if (transactionRef.trim())
-      fd.append("transactionRef", transactionRef.trim());
-    try {
-      const res = await fetch("/api/coordinator/payments/upload", {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadMsg({
-          type: "success",
-          text: `Payment submitted for ${data.studentName}. Pending admin approval.`,
-        });
-        setSelectedStudentId("");
-        setUploadFile(null);
-        setTransactionRef("");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        fetchPayments();
-      } else {
-        setUploadMsg({ type: "error", text: data.error || "Upload failed" });
-      }
-    } catch {
-      setUploadMsg({ type: "error", text: "Network error" });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -209,6 +378,8 @@ export default function CoordinatorPaymentsPage() {
         </p>
       </div>
 
+      <CoordinatorSelfPaymentCard />
+
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-6 text-sm">
           <div>
@@ -235,167 +406,8 @@ export default function CoordinatorPaymentsPage() {
               ₹{summary.totalAmount.toLocaleString()}
             </p>
           </div>
-          <div className="ml-auto">
-            <Button
-              size="sm"
-              variant={showUploadPanel ? "secondary" : "outline"}
-              className="gap-1.5"
-              onClick={() => {
-                setShowUploadPanel((p) => !p);
-                setUploadMsg(null);
-              }}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Upload Payment
-              {unpaidStudents.length > 0 && (
-                <span className="ml-1 rounded-full bg-amber-500 text-black text-[10px] font-bold px-1.5 py-0">
-                  {unpaidStudents.length}
-                </span>
-              )}
-            </Button>
-          </div>
         </CardContent>
       </Card>
-
-      {/* Upload panel */}
-      {showUploadPanel && (
-        <Card className="border-primary/20 bg-card/80">
-          <CardHeader className="pb-3 border-b border-white/5">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                Upload Payment Screenshot for Student
-              </CardTitle>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowUploadPanel(false);
-                  setUploadMsg(null);
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4 pb-5 space-y-4">
-            {unpaidStudents.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                All students have active payment records.
-              </p>
-            ) : (
-              <>
-                {uploadMsg && (
-                  <div
-                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${
-                      uploadMsg.type === "success"
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                        : "border-red-500/30 bg-red-500/10 text-red-300"
-                    }`}
-                  >
-                    {uploadMsg.type === "success" ? (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
-                    ) : (
-                      <X className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
-                    )}
-                    {uploadMsg.text}
-                  </div>
-                )}
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Student <span className="text-red-400">*</span>
-                    </label>
-                    <select
-                      value={selectedStudentId}
-                      onChange={(e) => setSelectedStudentId(e.target.value)}
-                      className="w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    >
-                      <option value="">Select student…</option>
-                      {unpaidStudents.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.register_number} — {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Transaction Ref (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={transactionRef}
-                      onChange={(e) => setTransactionRef(e.target.value)}
-                      placeholder="UPI Ref / Txn ID…"
-                      className="w-full rounded-md border border-border/60 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Payment Screenshot <span className="text-red-400">*</span>
-                  </label>
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="cursor-pointer rounded-lg border-2 border-dashed border-border/50 hover:border-primary/40 bg-muted/30 hover:bg-muted/50 transition-all px-4 py-6 text-center"
-                  >
-                    {uploadFile ? (
-                      <div className="flex items-center justify-center gap-2 text-sm text-emerald-400">
-                        <CheckCircle2 className="h-4 w-4" />
-                        {uploadFile.name}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUploadFile(null);
-                            if (fileInputRef.current)
-                              fileInputRef.current.value = "";
-                          }}
-                          className="text-muted-foreground hover:text-red-400"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground text-sm">
-                        <Upload className="h-5 w-5 mx-auto mb-1 opacity-50" />
-                        Click to select screenshot (max 5 MB)
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  The payment will be submitted as <strong>pending</strong> and
-                  must be approved by an admin.
-                </p>
-                <Button
-                  onClick={handleUpload}
-                  disabled={uploading || !selectedStudentId || !uploadFile}
-                  className="w-full gap-2"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4" /> Submit Payment for Approval
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex flex-wrap gap-2">
         {["pending", "approved", "rejected", "all"].map((status) => (

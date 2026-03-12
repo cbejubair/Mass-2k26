@@ -42,7 +42,7 @@ function parseError(err: unknown): { message: string; status: number } {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireAuth(["student"]);
+    const session = await requireAuth(["student", "class_coordinator"]);
     const { orderId, paymentId, signature } = await req.json();
 
     if (!orderId || !paymentId || !signature) {

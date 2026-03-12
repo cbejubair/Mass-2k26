@@ -23,7 +23,7 @@ async function fetchWithLogs(userId: string) {
 
 export async function POST() {
   try {
-    const session = await requireAuth(["student"]);
+    const session = await requireAuth(["student", "class_coordinator"]);
 
     // Check payment is approved
     const { data: payment } = await supabaseAdmin
@@ -73,7 +73,7 @@ export async function POST() {
 
 export async function GET() {
   try {
-    const session = await requireAuth(["student"]);
+    const session = await requireAuth(["student", "class_coordinator"]);
     const qr = await fetchWithLogs(session.userId);
     return NextResponse.json({ qr });
   } catch (err) {

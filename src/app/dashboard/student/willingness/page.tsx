@@ -212,7 +212,7 @@ function YesNoCard({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function WillingnessPage() {
-  const [supportStatus, setSupportStatus] = useState<boolean | null>(null);
+  const [supportStatus, setSupportStatus] = useState<boolean | null>(true);
   const [willingToCoordinate, setWillingToCoordinate] = useState<
     boolean | null
   >(null);
@@ -235,7 +235,7 @@ export default function WillingnessPage() {
           const data = await res.json();
           if (data.registration) {
             const r = data.registration;
-            setSupportStatus(r.support_status ?? null);
+            setSupportStatus(r.support_status ?? true);
             setWillingToCoordinate(r.willing_to_coordinate ?? null);
             setInterestedRoles(r.interested_roles ?? []);
             setRemarks(r.remarks ?? "");
@@ -265,8 +265,8 @@ export default function WillingnessPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (supportStatus === null || willingToCoordinate === null) {
-      setError("Please answer both questions before submitting.");
+    if (willingToCoordinate === null) {
+      setError("Please answer the question before submitting.");
       return;
     }
     setLoading(true);
@@ -364,24 +364,6 @@ export default function WillingnessPage() {
           <Separator className="bg-white/5" />
 
           <CardContent className="divide-y divide-white/5 px-6 py-0">
-            {/* support */}
-            <SummaryRow
-              icon={Heart}
-              question="Supporting MASS 2K26"
-              accent="bg-rose-500/10 border-rose-500/20 text-rose-400"
-            >
-              <Badge
-                variant="outline"
-                className={
-                  supportStatus
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                }
-              >
-                {supportStatus ? "Yes, I support" : "Not supporting"}
-              </Badge>
-            </SummaryRow>
-
             {/* willingness */}
             <SummaryRow
               icon={HandHeart}
@@ -502,13 +484,6 @@ export default function WillingnessPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <YesNoCard
-              question="Do you support MASS 2K26?"
-              description="Express your general support for this cultural event."
-              value={supportStatus}
-              onChange={setSupportStatus}
-            />
-            <Separator className="bg-white/5" />
-            <YesNoCard
               question="Are you willing to coordinate?"
               description="Coordinators take an active role in managing event activities."
               value={willingToCoordinate}
@@ -623,9 +598,7 @@ export default function WillingnessPage() {
         {/* ── Submit ────────────────────────────────────────────────────────── */}
         <Button
           type="submit"
-          disabled={
-            loading || supportStatus === null || willingToCoordinate === null
-          }
+          disabled={loading || willingToCoordinate === null}
           className="w-full bg-purple-600 hover:bg-purple-700 text-white"
         >
           {loading ? (
@@ -640,9 +613,9 @@ export default function WillingnessPage() {
           )}
         </Button>
 
-        {(supportStatus === null || willingToCoordinate === null) && (
+        {willingToCoordinate === null && (
           <p className="text-center text-xs text-muted-foreground">
-            Answer both questions above to enable submission.
+            Answer the question above to enable submission.
           </p>
         )}
       </form>
