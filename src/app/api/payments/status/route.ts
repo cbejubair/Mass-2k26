@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 
 export async function GET() {
   try {
-    const session = await requireAuth(["student", "class_coordinator"]);
+    const session = await requireAuth([
+      "student",
+      ...coordinatorDashboardRoles,
+    ]);
 
     const { data: payment } = await supabaseAdmin
       .from("payments")

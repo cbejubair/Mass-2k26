@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import { coordinatorDashboardRoles } from "@/lib/coordinators";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await requireAuth(["student"]);
+    const session = await requireAuth([
+      "student",
+      ...coordinatorDashboardRoles,
+    ]);
     const formData = await req.formData();
     const file = formData.get("screenshot") as File;
     const amount = formData.get("amount") as string;
