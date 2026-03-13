@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -187,6 +188,7 @@ function SummaryRow({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function SurveyPage() {
+  const router = useRouter();
   const [transportAfterEvent, setTransportAfterEvent] = useState("");
   const [needCollegeTransport, setNeedCollegeTransport] = useState("");
   const [transportArea, setTransportArea] = useState("");
@@ -257,6 +259,7 @@ export default function SurveyPage() {
 
       setSuccess(true);
       setExisting(true);
+      router.push("/dashboard/student");
     } catch {
       setError("Network error");
     } finally {

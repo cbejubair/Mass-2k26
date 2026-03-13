@@ -74,7 +74,7 @@ export default function LoginPage() {
   const [studentName, setStudentName] = useState("");
   const [department, setDepartment] = useState("");
   const [year, setYear] = useState("");
-  const [classSection, setClassSection] = useState("");
+  const [classSection, setClassSection] = useState("A");
   const [mobileNumber, setMobileNumber] = useState("");
   const [needsDetails, setNeedsDetails] = useState(false);
   const [autoDetected, setAutoDetected] = useState(false);
@@ -97,6 +97,12 @@ export default function LoginPage() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       setError("");
+
+      if (needsDetails && !photoFile) {
+        setError("Profile photo is required for new student registration.");
+        return;
+      }
+
       setLoading(true);
 
       try {
@@ -133,22 +139,34 @@ export default function LoginPage() {
           return;
         }
 
-        setRedirecting(true);
-
-        // Upload photo if selected (session cookie already set by login)
-        if (needsDetails && photoFile) {
+        // For new students, profile photo upload is mandatory
+        if (needsDetails) {
           try {
             const formData = new FormData();
-            formData.append("photo", photoFile);
-            await fetch("/api/auth/profile/image", {
+            formData.append("photo", photoFile!);
+            const photoRes = await fetch("/api/auth/profile/image", {
               method: "POST",
               body: formData,
             });
+
+            const photoData = await photoRes.json().catch(() => null);
+            if (!photoRes.ok) {
+              setError(
+                photoData?.error ||
+                  photoData?.message ||
+                  "Profile photo upload failed. Please try again.",
+              );
+              setLoading(false);
+              return;
+            }
           } catch {
-            // Non-fatal: user can upload from Settings later
+            setError("Profile photo upload failed. Please try again.");
+            setLoading(false);
+            return;
           }
         }
 
+        setRedirecting(true);
         window.location.href = DASHBOARD_PATHS.student;
       } catch {
         setError("Network error. Please try again.");
@@ -507,7 +525,7 @@ export default function LoginPage() {
                               {["A", "B"].map((s) => (
                                 <SelectItem key={s} value={s}>
                                   {s}
-                                  {s === "A" && " (use A if single)"}
+                                  {s === "A" && " (if no sections)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -542,7 +560,9 @@ export default function LoginPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">
                           Profile Photo{" "}
-                          <span className="text-purple-400">(optional)</span>
+                          {needsDetails && (
+                            <span className="text-red-400">(required)</span>
+                          )}
                         </Label>
                         <div className="flex items-center gap-3">
                           {photoPreview ? (
@@ -620,9 +640,17 @@ export default function LoginPage() {
                                 "image/png",
                                 "image/webp",
                               ].includes(file.type)
-                            )
+                            ) {
+                              setError(
+                                "Please select a JPEG, PNG, or WebP image.",
+                              );
                               return;
-                            if (file.size > 1.5 * 1024 * 1024) return;
+                            }
+                            if (file.size > 1.5 * 1024 * 1024) {
+                              setError("Image size must be less than 1.5MB.");
+                              return;
+                            }
+                            setError("");
                             setPhotoFile(file);
                             const reader = new FileReader();
                             reader.onloadend = () =>
@@ -637,7 +665,7 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-lg shadow-purple-900/40 transition-all h-10"
-                    disabled={loading}
+                    disabled={loading || (needsDetails && !photoFile)}
                   >
                     {loading ? (
                       <>
