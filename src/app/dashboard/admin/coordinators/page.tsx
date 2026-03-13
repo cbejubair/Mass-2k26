@@ -36,12 +36,13 @@ interface Coordinator {
 export default function AdminCoordinatorsPage() {
   const departmentOptions = [
     "CSE",
-    "ECE",
-    "EEE",
-    "MECH",
-    "CIVIL",
     "IT",
     "AIDS",
+    "AIML",
+    "BME",
+    "AGRI",
+    "ECE",
+    "MECH",
   ];
   const yearOptions = ["I", "II", "III", "IV"];
 
