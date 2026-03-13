@@ -127,7 +127,7 @@ const departments: DeptData[] = [
         year: "II",
         name: "Sree Sakthi",
         phone: "",
-        photo: "/coordinator/girl.jpeg",
+        photo: "/coordinator/boy.jpeg",
       },
       {
         year: "III",
@@ -200,7 +200,7 @@ const departments: DeptData[] = [
         year: "II",
         name: "Dharsana Sri",
         phone: "",
-        photo: "/coordinator/girl.jpeg",
+        photo: "/coordinator/boy.jpeg",
       },
       {
         year: "III",
