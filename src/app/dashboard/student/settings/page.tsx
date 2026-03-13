@@ -69,9 +69,9 @@ export default function StudentSettingsPage() {
       return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showMessage("error", "Image size must be less than 5MB");
+    // Validate file size (1.5MB)
+    if (file.size > 1.5 * 1024 * 1024) {
+      showMessage("error", "Image size must be less than 1.5MB");
       return;
     }
 
@@ -101,9 +101,12 @@ export default function StudentSettingsPage() {
       const data = await res.json();
 
       if (res.ok) {
+        const uploadedPhotoUrl = data.photoUrl || data.photo_url || null;
         showMessage("success", "Profile photo updated successfully!");
         setProfile((prev) =>
-          prev ? { ...prev, photo_url: data.photoUrl } : null,
+          prev
+            ? { ...prev, photo_url: uploadedPhotoUrl || prev.photo_url }
+            : null,
         );
         setSelectedFile(null);
         setPreviewUrl(null);
@@ -259,7 +262,7 @@ export default function StudentSettingsPage() {
                     <Camera className="h-4 w-4 mr-2" />
                     {profile.photo_url ? "Change Photo" : "Upload Photo"}
                   </Button>
-                  {profile.photo_url && (
+                  {/* {profile.photo_url && (
                     <Button
                       onClick={handleDelete}
                       variant="outline"
@@ -269,7 +272,7 @@ export default function StudentSettingsPage() {
                       <X className="h-4 w-4 mr-2" />
                       {deleting ? "Removing..." : "Remove Photo"}
                     </Button>
-                  )}
+                  )} */}
                 </div>
                 <input
                   ref={fileInputRef}
@@ -315,8 +318,8 @@ export default function StudentSettingsPage() {
               )}
 
               <div className="text-xs text-muted-foreground space-y-1">
-                <p>• Accepted formats: JPEG, PNG, WebP</p>
-                <p>• Maximum file size: 5MB</p>
+                <p>• Accepted formats: JPEG, PNG</p>
+                <p>• Maximum file size: 1.5MB</p>
                 <p>• Use a clear, front-facing photo</p>
               </div>
             </div>

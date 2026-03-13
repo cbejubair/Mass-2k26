@@ -571,19 +571,38 @@ export default function LoginPage() {
                             </div>
                           )}
                           <div className="flex-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => photoInputRef.current?.click()}
-                              className="border-white/10 bg-white/5 text-xs h-8"
-                            >
-                              <Camera className="h-3 w-3 mr-1.5" />
-                              {photoFile ? "Change Photo" : "Add Photo"}
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => photoInputRef.current?.click()}
+                                className="border-white/10 bg-white/5 text-xs h-8"
+                              >
+                                <Camera className="h-3 w-3 mr-1.5" />
+                                {photoFile ? "Change Photo" : "Add Photo"}
+                              </Button>
+                              {photoFile && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setPhotoFile(null);
+                                    setPhotoPreview(null);
+                                    if (photoInputRef.current)
+                                      photoInputRef.current.value = "";
+                                  }}
+                                  className="text-xs h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                >
+                                  <X className="h-3 w-3 mr-1.5" />
+                                  Remove Photo
+                                </Button>
+                              )}
+                            </div>
                             <p className="text-[10px] text-muted-foreground mt-1">
                               Used for QR entry verification. JPEG/PNG/WebP, max
-                              5MB.
+                              1.5MB.
                             </p>
                           </div>
                         </div>
@@ -603,7 +622,7 @@ export default function LoginPage() {
                               ].includes(file.type)
                             )
                               return;
-                            if (file.size > 5 * 1024 * 1024) return;
+                            if (file.size > 1.5 * 1024 * 1024) return;
                             setPhotoFile(file);
                             const reader = new FileReader();
                             reader.onloadend = () =>

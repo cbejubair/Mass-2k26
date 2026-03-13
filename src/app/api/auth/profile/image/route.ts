@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = Math.floor(1.5 * 1024 * 1024); // 1.5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const PROFILE_BUCKET = "mass";
 const PROFILE_FOLDER = "profiles";
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "File too large. Maximum size is 5MB" },
+        { error: "File too large. Maximum size is 1.5MB" },
         { status: 400 },
       );
     }
@@ -104,10 +104,19 @@ export async function POST(req: NextRequest) {
       .from(PROFILE_BUCKET)
       .getPublicUrl(filePath);
 
+    const photoUrl = urlData.publicUrl;
+    if (!photoUrl || photoUrl.length > 2048) {
+      await supabaseAdmin.storage.from(PROFILE_BUCKET).remove([filePath]);
+      return NextResponse.json(
+        { error: "Invalid photo URL generated. Please try again." },
+        { status: 500 },
+      );
+    }
+
     // Update user photo_url
     const { error: updateError } = await supabaseAdmin
       .from("users")
-      .update({ photo_url: urlData.publicUrl })
+      .update({ photo_url: photoUrl })
       .eq("id", session.userId);
 
     if (updateError) {
@@ -128,7 +137,7 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.storage.from(PROFILE_BUCKET).remove([oldPhotoPath]);
     }
 
-    return NextResponse.json({ success: true, photoUrl: urlData.publicUrl });
+    return NextResponse.json({ success: true, photoUrl });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";
