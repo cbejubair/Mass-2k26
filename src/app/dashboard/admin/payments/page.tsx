@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -37,7 +46,11 @@ interface PaymentItem {
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState("all");
   const [verifying, setVerifying] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -79,11 +92,87 @@ export default function AdminPaymentsPage() {
     rejected: 2,
   };
 
-  const filtered = (
-    filter === "all"
-      ? payments
-      : payments.filter((p) => p.payment_status === filter)
-  )
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          payments
+            .map((payment) => payment.users?.department)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [payments],
+  );
+
+  const yearOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          payments
+            .map((payment) => payment.users?.year)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    [payments],
+  );
+
+  const modeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(payments.map((payment) => payment.payment_mode || "upi")),
+      ).sort((a, b) => a.localeCompare(b)),
+    [payments],
+  );
+
+  const summary = useMemo(
+    () => ({
+      pending: payments.filter(
+        (payment) => payment.payment_status === "pending",
+      ).length,
+      approved: payments.filter(
+        (payment) => payment.payment_status === "approved",
+      ).length,
+      rejected: payments.filter(
+        (payment) => payment.payment_status === "rejected",
+      ).length,
+    }),
+    [payments],
+  );
+
+  const filtered = payments
+    .filter((payment) => {
+      if (statusFilter !== "all" && payment.payment_status !== statusFilter) {
+        return false;
+      }
+
+      if (
+        departmentFilter !== "all" &&
+        payment.users?.department !== departmentFilter
+      ) {
+        return false;
+      }
+
+      if (yearFilter !== "all" && payment.users?.year !== yearFilter) {
+        return false;
+      }
+
+      const resolvedMode = payment.payment_mode || "upi";
+      if (modeFilter !== "all" && resolvedMode !== modeFilter) {
+        return false;
+      }
+
+      if (!search.trim()) {
+        return true;
+      }
+
+      const query = search.toLowerCase();
+      return (
+        payment.users?.name?.toLowerCase().includes(query) ||
+        payment.users?.register_number?.toLowerCase().includes(query) ||
+        payment.users?.department?.toLowerCase().includes(query) ||
+        payment.transaction_ref?.toLowerCase().includes(query)
+      );
+    })
     .slice()
     .sort((a, b) => {
       const byStatus =
@@ -106,21 +195,98 @@ export default function AdminPaymentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold">Payment Management</h1>
-        <div className="flex flex-wrap gap-2">
-          {["all", "pending", "approved", "rejected"].map((f) => (
-            <Button
-              key={f}
-              variant={filter === f ? "default" : "secondary"}
-              size="sm"
-              onClick={() => setFilter(f)}
-              className="capitalize"
-            >
-              {f}
-            </Button>
-          ))}
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">Payment Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Showing {filtered.length} of {payments.length} submissions
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">Pending: {summary.pending}</Badge>
+          <Badge variant="default">Approved: {summary.approved}</Badge>
+          <Badge variant="destructive">Rejected: {summary.rejected}</Badge>
         </div>
       </div>
+
+      <Card>
+        <CardContent className="p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, register no, txn ref..."
+            className="lg:col-span-2"
+          />
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Department" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {departmentOptions.map((department) => (
+                <SelectItem key={department} value={department}>
+                  {department}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {yearOptions.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={modeFilter} onValueChange={setModeFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Modes</SelectItem>
+              {modeOptions.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {mode.toUpperCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("all");
+              setDepartmentFilter("all");
+              setYearFilter("all");
+              setModeFilter("all");
+            }}
+            className="sm:col-span-2 lg:col-span-6"
+          >
+            Clear Filters
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="rounded-lg border border-border overflow-x-auto">
         <Table className="min-w-[1000px]">
@@ -303,7 +469,7 @@ export default function AdminPaymentsPage() {
               Close
             </Button>
             <img
-              src={previewUrl}
+              src={previewUrl ?? ""}
               alt="Payment screenshot preview"
               className="w-full max-h-[85vh] object-contain rounded-lg border border-border bg-background"
             />

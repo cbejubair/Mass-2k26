@@ -198,7 +198,7 @@ const departments: DeptData[] = [
       { year: "I", name: "Avinash", phone: "", photo: "/coordinator/boy.jpeg" },
       {
         year: "II",
-        name: "Dharsana Sri",
+        name: "Dharshan Sir",
         phone: "",
         photo: "/coordinator/boy.jpeg",
       },

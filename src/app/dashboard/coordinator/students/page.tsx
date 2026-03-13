@@ -152,7 +152,7 @@ export default function CoordinatorStudentsPage() {
             <TableRow>
               <TableHead>Register No</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Registration</TableHead>
+              <TableHead>Survey Form</TableHead>
               <TableHead>Willing</TableHead>
               <TableHead>Interested Roles</TableHead>
               <TableHead>Amount</TableHead>
