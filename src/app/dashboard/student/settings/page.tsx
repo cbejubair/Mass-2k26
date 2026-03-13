@@ -109,7 +109,10 @@ export default function StudentSettingsPage() {
         setPreviewUrl(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
       } else {
-        showMessage("error", data.message || "Failed to upload photo");
+        showMessage(
+          "error",
+          data.error || data.message || "Failed to upload photo",
+        );
       }
     } catch (error) {
       showMessage("error", "Error uploading photo");
@@ -133,7 +136,10 @@ export default function StudentSettingsPage() {
         showMessage("success", "Profile photo removed successfully!");
         setProfile((prev) => (prev ? { ...prev, photo_url: undefined } : null));
       } else {
-        showMessage("error", data.message || "Failed to remove photo");
+        showMessage(
+          "error",
+          data.error || data.message || "Failed to remove photo",
+        );
       }
     } catch (error) {
       showMessage("error", "Error removing photo");

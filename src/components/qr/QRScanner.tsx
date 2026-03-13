@@ -23,6 +23,7 @@ interface ScanResult {
     department: string;
     year: string;
     class_section: string;
+    photo_url?: string;
   };
 }
 

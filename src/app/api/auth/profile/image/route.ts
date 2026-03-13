@@ -4,6 +4,34 @@ import { requireAuth } from "@/lib/auth";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const PROFILE_BUCKET = "mass";
+const PROFILE_FOLDER = "profiles";
+
+function getFileExtension(file: File) {
+  const fromName = file.name?.split(".").pop()?.toLowerCase();
+  if (fromName) return fromName;
+
+  const byMime: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+
+  return byMime[file.type] || "jpg";
+}
+
+function extractStoragePathFromPublicUrl(url: string | null | undefined) {
+  if (!url || !url.includes("/storage/v1/object/public/")) return null;
+
+  const marker = `/storage/v1/object/public/${PROFILE_BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index === -1) return null;
+
+  const encodedPath = url.slice(index + marker.length);
+  if (!encodedPath) return null;
+  return decodeURIComponent(encodedPath);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,11 +41,20 @@ export async function POST(req: NextRequest) {
       "class_coordinator",
     ]);
     const formData = await req.formData();
-    const file = formData.get("photo") as File;
+    const photo = formData.get("photo");
 
-    if (!file) {
+    if (!(photo instanceof File)) {
       return NextResponse.json(
-        { error: "No image file provided" },
+        { error: "Invalid image payload. Please upload a valid file." },
+        { status: 400 },
+      );
+    }
+
+    const file = photo;
+
+    if (file.size <= 0) {
+      return NextResponse.json(
+        { error: "Empty image file provided" },
         { status: 400 },
       );
     }
@@ -38,28 +75,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert to base64 data URL (for simplicity - stores in DB)
-    // In production, you'd upload to cloud storage (S3, Cloudinary, etc.)
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString("base64");
-    const dataUrl = `data:${file.type};base64,${base64}`;
+    const fileExt = getFileExtension(file);
+    const filePath = `${PROFILE_FOLDER}/${session.userId}/profile-${Date.now()}.${fileExt}`;
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    const { data: currentUser } = await supabaseAdmin
+      .from("users")
+      .select("photo_url")
+      .eq("id", session.userId)
+      .single();
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(PROFILE_BUCKET)
+      .upload(filePath, fileBuffer, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Photo upload storage error:", uploadError);
+      return NextResponse.json(
+        { error: "Failed to upload photo to storage" },
+        { status: 500 },
+      );
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from(PROFILE_BUCKET)
+      .getPublicUrl(filePath);
 
     // Update user photo_url
-    const { error } = await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from("users")
-      .update({ photo_url: dataUrl })
+      .update({ photo_url: urlData.publicUrl })
       .eq("id", session.userId);
 
-    if (error) {
-      console.error("Photo upload error:", error);
+    if (updateError) {
+      console.error("Photo upload DB update error:", updateError);
+
+      await supabaseAdmin.storage.from(PROFILE_BUCKET).remove([filePath]);
+
       return NextResponse.json(
         { error: "Failed to save photo" },
         { status: 500 },
       );
     }
 
-    return NextResponse.json({ success: true, photoUrl: dataUrl });
+    const oldPhotoPath = extractStoragePathFromPublicUrl(
+      currentUser?.photo_url,
+    );
+    if (oldPhotoPath && oldPhotoPath !== filePath) {
+      await supabaseAdmin.storage.from(PROFILE_BUCKET).remove([oldPhotoPath]);
+    }
+
+    return NextResponse.json({ success: true, photoUrl: urlData.publicUrl });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";
@@ -77,6 +146,12 @@ export async function DELETE() {
       "class_coordinator",
     ]);
 
+    const { data: currentUser } = await supabaseAdmin
+      .from("users")
+      .select("photo_url")
+      .eq("id", session.userId)
+      .single();
+
     const { error } = await supabaseAdmin
       .from("users")
       .update({ photo_url: null })
@@ -88,6 +163,13 @@ export async function DELETE() {
         { error: "Failed to delete photo" },
         { status: 500 },
       );
+    }
+
+    const oldPhotoPath = extractStoragePathFromPublicUrl(
+      currentUser?.photo_url,
+    );
+    if (oldPhotoPath) {
+      await supabaseAdmin.storage.from(PROFILE_BUCKET).remove([oldPhotoPath]);
     }
 
     return NextResponse.json({ success: true });

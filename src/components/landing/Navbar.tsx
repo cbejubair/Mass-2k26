@@ -11,7 +11,7 @@ const navLinks = [
   { name: "About", href: "/#about" },
   { name: "Events", href: "/events" },
   { name: "Timeline", href: "/#events" },
-  { name: "Coordinators", href: "/coordinators" },
+  { name: "Coordinators", href: "/#coordinators" },
   { name: "Rules", href: "/rules" },
   { name: "FAQ", href: "/faq" },
 ];
@@ -65,7 +65,7 @@ export default function Navbar() {
               href="/"
               className="group flex flex-shrink-0 items-center gap-2.5"
             >
-              <div className="relative h-8 w-8 overflow-hidden rounded-lg ring-1 ring-fuchsia-500/40 transition group-hover:ring-fuchsia-400/70 sm:h-9 sm:w-9">
+              <div className="relative h-8 w-8 overflow-hidden transition group-hover:ring-fuchsia-400/70 sm:h-9 sm:w-9">
                 <Image
                   src="/logo.png"
                   alt="MASS 2K26"
