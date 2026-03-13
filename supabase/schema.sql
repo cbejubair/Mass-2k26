@@ -140,6 +140,24 @@ CREATE TABLE agenda (
 CREATE INDEX idx_agenda_time ON agenda(start_time, end_time);
 
 -- ============================================
+-- 8. LOGIN LOGS TABLE
+--    Successful login history for audit
+-- ============================================
+CREATE TABLE login_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  register_number TEXT,
+  ip_address TEXT,
+  user_agent TEXT,
+  logged_in_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_login_logs_user_id ON login_logs(user_id);
+CREATE INDEX idx_login_logs_role ON login_logs(role);
+CREATE INDEX idx_login_logs_logged_in_at ON login_logs(logged_in_at DESC);
+
+-- ============================================
 -- ROW LEVEL SECURITY
 -- ============================================
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -149,6 +167,7 @@ ALTER TABLE performance_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE survey_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entry_qr ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agenda ENABLE ROW LEVEL SECURITY;
+ALTER TABLE login_logs ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS — backend API routes using service role key will work.
 -- For direct client access, add policies as needed.

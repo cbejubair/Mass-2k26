@@ -9,6 +9,30 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { loginType } = body; // "student" or "admin"
 
+    const forwardedFor = req.headers.get("x-forwarded-for");
+    const ipAddress = forwardedFor?.split(",")[0]?.trim() || null;
+    const userAgent = req.headers.get("user-agent") || null;
+
+    const recordLogin = async (user: {
+      id: string;
+      role: string;
+      register_number?: string | null;
+    }) => {
+      const { error: logError } = await supabaseAdmin
+        .from("login_logs")
+        .insert({
+          user_id: user.id,
+          role: user.role,
+          register_number: user.register_number ?? null,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        });
+
+      if (logError) {
+        console.error("Login log insert error:", logError);
+      }
+    };
+
     // ============================================================
     // STUDENT LOGIN — register number only, auto-create if new
     // ============================================================
@@ -41,6 +65,8 @@ export async function POST(req: NextRequest) {
 
       if (existing) {
         // Existing student — login directly
+        await recordLogin(existing);
+
         const token = signToken({
           userId: existing.id,
           role: existing.role,
@@ -110,6 +136,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      await recordLogin(newUser);
+
       const token = signToken({
         userId: newUser.id,
         role: newUser.role,
@@ -176,6 +204,8 @@ export async function POST(req: NextRequest) {
         { status: 401 },
       );
     }
+
+    await recordLogin(user);
 
     const token = signToken({
       userId: user.id,
