@@ -224,7 +224,7 @@ export default function StudentSettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row items-start gap-6">
             {/* Photo Display */}
-            <div className="relative flex-shrink-0">
+            {/* <div className="relative flex-shrink-0">
               <div className="relative h-32 w-32 rounded-xl border-2 border-border overflow-hidden bg-secondary/20">
                 {displayPhotoUrl ? (
                   <img
@@ -243,7 +243,7 @@ export default function StudentSettingsPage() {
                   Preview
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* Upload Controls */}
             <div className="flex-1 space-y-4">

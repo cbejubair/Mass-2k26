@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   BarChart3,
+  TrendingUp,
   CreditCard,
   Drama,
   ScanLine,
@@ -40,6 +41,11 @@ interface MenuItem {
 const menuItems: Partial<Record<UserRole, MenuItem[]>> = {
   admin: [
     { label: "Overview", path: "/dashboard/admin", icon: BarChart3 },
+    {
+      label: "Tracking",
+      path: "/dashboard/admin/tracking",
+      icon: TrendingUp,
+    },
     { label: "Payments", path: "/dashboard/admin/payments", icon: CreditCard },
     {
       label: "Performances",

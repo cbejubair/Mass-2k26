@@ -98,15 +98,37 @@ export default function RegisterPage() {
     );
   };
 
+  const readErrorMessage = async (res: Response) => {
+    const contentType = res.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const json = await res.json().catch(() => null);
+      if (json && typeof json.error === "string" && json.error.trim()) {
+        return json.error;
+      }
+      return `Request failed with status ${res.status}`;
+    }
+
+    const text = await res.text().catch(() => "");
+    if (text.trim()) {
+      return text.slice(0, 180);
+    }
+
+    return `Request failed with status ${res.status}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           supportStatus,
           willingToCoordinate,
@@ -115,18 +137,39 @@ export default function RegisterPage() {
         }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setError(data.error);
+        setError(await readErrorMessage(res));
         return;
       }
 
       setSuccess(true);
       setTimeout(() => router.push("/dashboard/student"), 2000);
-    } catch {
-      setError("Network error");
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Request timed out. Please try again.");
+        return;
+      }
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setError(
+          "You appear to be offline. Please check your internet connection.",
+        );
+        return;
+      }
+
+      if (err instanceof TypeError) {
+        setError("Unable to reach the server. Please try again in a moment.");
+        return;
+      }
+
+      if (err instanceof Error && err.message.trim()) {
+        setError(err.message);
+        return;
+      }
+
+      setError("Something went wrong while submitting. Please try again.");
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   };
