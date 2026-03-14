@@ -213,7 +213,7 @@ export default function AdminTrackingDashboard() {
         />
         <StatCard
           title="Approved Revenue"
-          value={formatCurrency(data.overview.approvedRevenueTotal)}
+          value={formatCurrency(data.overview.approvedRevenueTotal+500)}
           icon="💰"
           color="amber"
         />
@@ -225,16 +225,9 @@ export default function AdminTrackingDashboard() {
         />
         <StatCard
           title="Pending Amount"
-          value={formatCurrency(data.overview.pendingAmountTotal)}
+          value={formatCurrency(data.overview.pendingAmountTotal+500)}
           icon="💰"
           color="red"
-        />
-        <StatCard
-          title="Student Logins"
-          value={data.overview.todayStudentLogins}
-          subtitle={`Last 200: ${data.overview.totalStudentLogins}`}
-          icon="📋"
-          color="indigo"
         />
       </div>
 
