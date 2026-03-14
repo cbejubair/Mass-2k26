@@ -93,6 +93,12 @@ const ruleSections: RuleSection[] = [
     rules: [
       "All performances must be registered and approved through the portal before the deadline",
       "Music tracks / karaoke files must be submitted at least 3 days before the event",
+      "Maximum song/performance duration is 5 minutes",
+      "Repeated songs are not allowed",
+      "Performance songs allowed on a first-come, first-served basis",
+      "Group dance teams must have a minimum of 3 and a maximum of 15 members",
+      "Costumes and props are the sole responsibility of the performance team",
+      "Mandatory rehearsal will be conducted before the event",
       "Performance time limits will be strictly enforced — exceeding time leads to point deduction",
       "Content must be college-appropriate — no vulgar, offensive, or politically provocative material",
       "Props and costumes are allowed but must be approved by the event committee in advance",

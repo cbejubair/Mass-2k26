@@ -44,7 +44,11 @@ export default function DemoOne() {
           </div>
 
           <div className="flex justify-center">
-            <LiquidButton className="rounded-full border text-white" size="xl">
+            <LiquidButton
+              className="rounded-full border text-white"
+              size="xl"
+              onClick={() => window.location.href = "/login"}
+            >
               Login Now
             </LiquidButton>
           </div>

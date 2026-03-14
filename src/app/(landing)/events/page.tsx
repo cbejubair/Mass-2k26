@@ -45,7 +45,7 @@ const events: FestEvent[] = [
     description:
       "Assemble your crew and light up the stage! Coordination, costumes, and choreography — let your team energy electrify the crowd.",
     teamSize: "4-15",
-    duration: "5-8 min",
+    duration: "4-6 min",
     prize: "₹10,000",
     imageSrc:
       "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1400&q=80",
@@ -93,7 +93,7 @@ const events: FestEvent[] = [
     description:
       "The grand finale! Professional DJ, LED lights, smoke machines, and the entire crowd going wild. This is what MASS 2K26 is all about.",
     teamSize: "All",
-    duration: "3-4 hours",
+    duration: "1-2 hours",
     prize: "—",
     imageSrc:
       "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1400&q=80",
@@ -147,36 +147,36 @@ export default function EventsPage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="relative pt-28 pb-16 md:pt-36 md:pb-20">
+      <section className="relative pt-24 pb-12 md:pt-32 md:pb-16">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-1/3 w-96 h-96 bg-fuchsia-500/8 rounded-full blur-[120px]" />
           <div className="absolute top-40 right-1/4 w-80 h-80 bg-cyan-500/8 rounded-full blur-[120px]" />
         </div>
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* <Link
+          <Link
             href="/"
             className="inline-flex items-center gap-2 text-neutral-500 hover:text-white text-sm mb-8 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Home
-          </Link> */}
+          </Link>
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4">
               Event <span className="text-fuchsia-400">Lineup</span>
             </h1>
-            <p className="text-neutral-400 text-lg max-w-2xl mb-8">
+            <p className="text-neutral-400 text-base sm:text-lg max-w-2xl mb-6 sm:mb-8">
               {events.length} events across dance, music, drama, art, and more.
               Find your stage and register to perform!
             </p>
           </motion.div>
 
           {/* Search */}
-          {/* <div className="relative max-w-md mb-8">
+          <div className="relative w-full sm:max-w-md mb-5 sm:mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
             <input
               type="text"
@@ -185,29 +185,35 @@ export default function EventsPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-neutral-600 focus:outline-none focus:border-fuchsia-500/50 transition-colors"
             />
-          </div> */}
+          </div>
 
           {/* Category tabs */}
-          {/* <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
-                  activeCategory === cat.id
-                    ? "bg-white/10 border-white/20 text-white shadow-sm"
-                    : "border-white/5 text-neutral-500 hover:text-neutral-300 hover:border-white/15"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div> */}
+          <div className="-mx-1 px-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max min-w-full gap-2 pb-1">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border ${
+                    activeCategory === cat.id
+                      ? "bg-white/10 border-white/20 text-white shadow-sm"
+                      : "border-white/5 text-neutral-500 hover:text-neutral-300 hover:border-white/15"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="mt-4 text-xs sm:text-sm text-neutral-500">
+            Showing {filteredEvents.length} of {events.length} events
+          </p>
         </div>
       </section>
 
       {/* Events Stack */}
-      <section className="relative pb-24">
+      <section className="relative pb-20 md:pb-24">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {stackItems.length > 0 ? <EventCards items={stackItems} /> : null}
 
