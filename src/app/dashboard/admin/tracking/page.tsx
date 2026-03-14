@@ -484,7 +484,7 @@ export default function AdminTrackingDashboard() {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="text-base">Student Login Details</CardTitle>
         </CardHeader>
@@ -539,7 +539,7 @@ export default function AdminTrackingDashboard() {
             </Table>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }

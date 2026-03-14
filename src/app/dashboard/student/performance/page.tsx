@@ -263,6 +263,9 @@ function MusicPlayer({ url }: { url: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PerformancePage() {
+  const whatsappGroupLink =
+    process.env.NEXT_PUBLIC_PERFORMANCE_WHATSAPP_GROUP_LINK?.trim() || "https://chat.whatsapp.com/KB6NSCbpiLk2rGwNe2TtO6?mode=gi_t";
+
   // data
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
   const [teamPerformances, setTeamPerformances] = useState<TeamPerformance[]>(
@@ -310,6 +313,7 @@ export default function PerformancePage() {
 
   const totalEvents = performances.length + teamPerformances.length;
   const canAddMore = totalEvents < MAX_EVENTS && !editingId;
+  const canShowWhatsappLink = totalEvents > 0;
 
   // ─── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -552,6 +556,37 @@ export default function PerformancePage() {
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
           {successMessage}
         </div>
+      )}
+
+      {/* ── WhatsApp group join card ── */}
+      {canShowWhatsappLink && (
+        <Card className="border-green-500/20 bg-green-500/[0.04]">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-green-300">
+                Performance WhatsApp Group
+              </p>
+              <p className="text-xs text-green-400/80">
+                You are a leader/team member. Join the group for updates.
+              </p>
+            </div>
+            {whatsappGroupLink ? (
+              <Button
+                asChild
+                size="sm"
+                className="gap-1.5 bg-green-600 hover:bg-green-500 text-white"
+              >
+                <a href={whatsappGroupLink} target="_blank" rel="noreferrer">
+                  Join Group <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            ) : (
+              <Badge variant="outline" className="text-xs border-green-500/30">
+                Link will be shared soon
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* ── Registration Form ── */}
@@ -1081,6 +1116,26 @@ export default function PerformancePage() {
                           Editing resets to pending review
                         </p>
                       </div>
+
+                      {whatsappGroupLink && (
+                        <div className="pt-1">
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs border-green-500/30 text-green-300 hover:bg-green-500/10"
+                          >
+                            <a
+                              href={whatsappGroupLink}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Join WhatsApp Group
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))
@@ -1135,6 +1190,26 @@ export default function PerformancePage() {
                             You are a team member
                           </Badge>
                         </div>
+
+                        {whatsappGroupLink && (
+                          <div className="mt-3">
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 text-xs border-green-500/30 text-green-300 hover:bg-green-500/10"
+                            >
+                              <a
+                                href={whatsappGroupLink}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Join WhatsApp Group
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
