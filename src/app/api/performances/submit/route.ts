@@ -6,6 +6,9 @@ import {
   getPerformancePaymentEligibilityByUserId,
 } from "@/lib/performance-payment-rule";
 
+export const runtime = "nodejs";
+export const maxDuration = 120;
+
 type ResolvedMember = {
   register_number: string;
   name: string;
@@ -64,17 +67,20 @@ async function uploadMusicIfProvided(
 ) {
   if (!musicFile || musicFile.size <= 0) return null;
 
+  if (!musicFile.type?.startsWith("audio/")) {
+    throw new Error("Only audio files are allowed");
+  }
+
   if (musicFile.size > 20 * 1024 * 1024) {
     throw new Error("Music file must be less than 20MB");
   }
 
-  const fileExt = musicFile.name.split(".").pop();
+  const fileExt = musicFile.name.split(".").pop() || "bin";
   const filePath = `music/${registerNumber}/${filePrefix}.${fileExt}`;
-  const fileBuffer = Buffer.from(await musicFile.arrayBuffer());
 
   const { error: uploadErr } = await supabaseAdmin.storage
     .from("mass")
-    .upload(filePath, fileBuffer, {
+    .upload(filePath, musicFile, {
       contentType: musicFile.type,
       upsert: true,
     });

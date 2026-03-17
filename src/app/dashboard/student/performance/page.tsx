@@ -99,6 +99,8 @@ interface LookupPreviewMissing {
 type LookupPreview = LookupPreviewFound | LookupPreviewMissing;
 
 const MAX_EVENTS = 3;
+const MAX_AUDIO_SIZE_BYTES = 20 * 1024 * 1024;
+const UPLOAD_TIMEOUT_MS = 120000;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -490,26 +492,66 @@ export default function PerformancePage() {
       setError(`You have reached the maximum of ${MAX_EVENTS} events.`);
       return;
     }
+
+    if (musicFile) {
+      if (!musicFile.type?.startsWith("audio/")) {
+        setError("Only audio files are allowed for music track upload.");
+        return;
+      }
+      if (musicFile.size > MAX_AUDIO_SIZE_BYTES) {
+        setError("Music file must be less than 20MB.");
+        return;
+      }
+    }
+
     setLoading(true);
     setError("");
     setSuccess(false);
     setSuccessMessage("");
     try {
-      const fd = new FormData();
-      if (editingId) fd.append("performanceId", editingId);
-      fd.append("performanceType", performanceType);
-      fd.append("participantsCount", participantsCount);
-      fd.append("leaderName", leaderName);
-      fd.append("specialRequirements", specialRequirements);
-      fd.append("isTeam", String(isTeam));
-      if (isTeam && teamMembers.length > 0)
-        fd.append("teamMembers", JSON.stringify(teamMembers));
-      if (musicFile) fd.append("musicFile", musicFile);
+      const createPayload = () => {
+        const fd = new FormData();
+        if (editingId) fd.append("performanceId", editingId);
+        fd.append("performanceType", performanceType);
+        fd.append("participantsCount", participantsCount);
+        fd.append("leaderName", leaderName);
+        fd.append("specialRequirements", specialRequirements);
+        fd.append("isTeam", String(isTeam));
+        if (isTeam && teamMembers.length > 0)
+          fd.append("teamMembers", JSON.stringify(teamMembers));
+        if (musicFile) fd.append("musicFile", musicFile);
+        return fd;
+      };
 
-      const res = await fetch("/api/performances/submit", {
-        method: editingId ? "PUT" : "POST",
-        body: fd,
-      });
+      const submitOnce = async () => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+        try {
+          return await fetch("/api/performances/submit", {
+            method: editingId ? "PUT" : "POST",
+            body: createPayload(),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+      };
+
+      let res: Response;
+      try {
+        res = await submitOnce();
+      } catch (firstErr) {
+        const isAbort =
+          firstErr instanceof DOMException && firstErr.name === "AbortError";
+        const isNetwork = firstErr instanceof TypeError;
+
+        if (isAbort || isNetwork) {
+          res = await submitOnce();
+        } else {
+          throw firstErr;
+        }
+      }
+
       const data = await res.json();
       if (!res.ok) {
         setError(data.error);
@@ -525,8 +567,16 @@ export default function PerformancePage() {
       setEditingId(null);
       await fetchAll();
       setShowForm(false);
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError(
+          "Upload timed out. Check your connection and try a smaller/compressed audio file.",
+        );
+      } else {
+        setError(
+          "Upload failed due to a network issue. Please retry with stable internet.",
+        );
+      }
     } finally {
       setLoading(false);
     }
