@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Trash2, Drama, Wrench } from "lucide-react";
+import { Loader2, Trash2, Drama, Wrench, Edit2 } from "lucide-react";
 
 interface AgendaItem {
   id: string;
@@ -41,9 +41,10 @@ export default function AdminAgendaPage() {
   const [showForm, setShowForm] = useState(false);
   const [performanceSearch, setPerformanceSearch] = useState("");
   const [formData, setFormData] = useState({
+    id: "",
     title: "",
     startTime: "",
-    endTime: "",
+    duration: 10,
     description: "",
     assignedPerformanceId: "",
     stageRequirements: "",
@@ -101,15 +102,41 @@ export default function AdminAgendaPage() {
     return text.includes(q);
   });
 
+  const handleAssignPerformance = (perfId: string) => {
+    const perf = performances.find((p) => p.id === perfId);
+    if (!perf) {
+      setFormData({ ...formData, assignedPerformanceId: "" });
+      return;
+    }
+
+    // Auto-fill based on performance
+    setFormData({
+      ...formData,
+      assignedPerformanceId: perfId,
+      title: `${perf.performance_type} by ${perf.leader_name}`,
+      description: `Performance type: ${perf.performance_type}`,
+      duration: formData.duration || 10,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     try {
+      const start = new Date(formData.startTime);
+      const end = new Date(start.getTime() + formData.duration * 60000); // Add duration in minutes
+
+      const payload = {
+        ...formData,
+        endTime: end.toISOString(),
+      };
+
+      const method = formData.id ? "PUT" : "POST";
       const res = await fetch("/api/agenda", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -123,9 +150,10 @@ export default function AdminAgendaPage() {
 
       setShowForm(false);
       setFormData({
+        id: "",
         title: "",
         startTime: "",
-        endTime: "",
+        duration: 10,
         description: "",
         assignedPerformanceId: "",
         stageRequirements: "",
@@ -134,6 +162,32 @@ export default function AdminAgendaPage() {
     } catch {
       setError("Network error");
     }
+  };
+
+  const handleEdit = (item: AgendaItem) => {
+    // Calculate duration in minutes
+    const start = new Date(item.start_time);
+    const end = new Date(item.end_time);
+    const duration = Math.round((end.getTime() - start.getTime()) / 60000);
+
+    // Format start time for input type="datetime-local" (YYYY-MM-DDTHH:mm)
+    const localStartTime = new Date(
+      start.getTime() - start.getTimezoneOffset() * 60000,
+    )
+      .toISOString()
+      .slice(0, 16);
+
+    setFormData({
+      id: item.id,
+      title: item.title,
+      startTime: localStartTime,
+      duration,
+      description: item.description || "",
+      assignedPerformanceId: item.assigned_performance_id || "",
+      stageRequirements: item.stage_requirements || "",
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id: string) => {
@@ -163,9 +217,55 @@ export default function AdminAgendaPage() {
             Schedule and manage event timeline
           </p>
         </div>
-        <Button size="sm" onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Cancel" : "+ Add Slot"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setFormData((f) => ({
+                ...f,
+                title: "DJ Performance",
+                duration: 30,
+              }));
+              setShowForm(true);
+            }}
+          >
+            + Add DJ
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setFormData((f) => ({
+                ...f,
+                title: "Filler / Game",
+                duration: 15,
+              }));
+              setShowForm(true);
+            }}
+          >
+            + Add Filler
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              if (showForm) {
+                setFormData({
+                  id: "",
+                  title: "",
+                  startTime: "",
+                  duration: 10,
+                  description: "",
+                  assignedPerformanceId: "",
+                  stageRequirements: "",
+                });
+              }
+              setShowForm(!showForm);
+            }}
+          >
+            {showForm ? "Cancel" : "+ Add Slot"}
+          </Button>
+        </div>
       </div>
 
       {fetchError && (
@@ -204,12 +304,7 @@ export default function AdminAgendaPage() {
                   />
                   <select
                     value={formData.assignedPerformanceId}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        assignedPerformanceId: e.target.value,
-                      })
-                    }
+                    onChange={(e) => handleAssignPerformance(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">None</option>
@@ -226,7 +321,7 @@ export default function AdminAgendaPage() {
                     {performances.length} registered performances.
                   </p>
                 </div>
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label>Start Time</Label>
                   <Input
                     type="datetime-local"
@@ -236,14 +331,19 @@ export default function AdminAgendaPage() {
                     }
                     required
                   />
-                </div>
+                </div> */}
                 <div className="space-y-2">
-                  <Label>End Time</Label>
+                  <Label>Duration (Minutes)</Label>
                   <Input
-                    type="datetime-local"
-                    value={formData.endTime}
+                    type="number"
+                    min="1"
+                    className="w-full"
+                    value={formData.duration}
                     onChange={(e) =>
-                      setFormData({ ...formData, endTime: e.target.value })
+                      setFormData({
+                        ...formData,
+                        duration: parseInt(e.target.value) || 0,
+                      })
                     }
                     required
                   />
@@ -275,7 +375,9 @@ export default function AdminAgendaPage() {
                 />
               </div>
 
-              <Button type="submit">Save Agenda Slot</Button>
+              <Button type="submit">
+                {formData.id ? "Update Agenda Slot" : "Save Agenda Slot"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -320,14 +422,24 @@ export default function AdminAgendaPage() {
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                onClick={() => handleDelete(item.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                  onClick={() => handleEdit(item)}
+                >
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  onClick={() => handleDelete(item.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}

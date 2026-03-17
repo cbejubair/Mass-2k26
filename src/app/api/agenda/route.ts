@@ -111,3 +111,71 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: message }, { status });
   }
 }
+
+export async function PUT(req: NextRequest) {
+  try {
+    await requireAuth(["admin"]);
+    const body = await req.json();
+    const {
+      id,
+      title,
+      startTime,
+      endTime,
+      description,
+      assignedPerformanceId,
+      stageRequirements,
+    } = body;
+
+    if (!id || !title || !startTime || !endTime) {
+      return NextResponse.json(
+        { error: "ID, Title, start time, and end time are required" },
+        { status: 400 },
+      );
+    }
+
+    // Check for time conflicts excluding the current item
+    const { data: conflicts } = await supabaseAdmin
+      .from("agenda")
+      .select("id, title")
+      .neq("id", id)
+      .or(`and(start_time.lt.${endTime},end_time.gt.${startTime})`);
+
+    if (conflicts && conflicts.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Time conflict detected",
+          conflicts: conflicts.map((c) => c.title),
+        },
+        { status: 409 },
+      );
+    }
+
+    const { error } = await supabaseAdmin
+      .from("agenda")
+      .update({
+        title,
+        start_time: startTime,
+        end_time: endTime,
+        description: description || null,
+        assigned_performance_id: assignedPerformanceId || null,
+        stage_requirements: stageRequirements || null,
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Agenda update error:", error);
+      return NextResponse.json(
+        { error: "Failed to update agenda item" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Internal server error";
+    const status =
+      message === "Unauthorized" ? 401 : message === "Forbidden" ? 403 : 500;
+    return NextResponse.json({ error: message }, { status });
+  }
+}
