@@ -12,6 +12,7 @@ export async function GET() {
         "id, register_number, name, department, year, class_section, mobile_number",
       )
       .eq("role", "student")
+      .limit(5000)
       .order("register_number");
 
     if (studentsError) {

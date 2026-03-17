@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -34,10 +41,14 @@ export default function AdminWillingnessPage() {
   const [students, setStudents] = useState<StudentWillingness[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [sectionFilter, setSectionFilter] = useState("all");
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    fetch("/api/admin/students")
+    fetch("/api/admin/willingness")
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok) {
@@ -58,20 +69,63 @@ export default function AdminWillingnessPage() {
   const submitted = students.filter(
     (student) => (student.event_registrations?.length || 0) > 0,
   );
-  const willingCount = submitted.filter(
-    (student) => student.event_registrations?.[0]?.willing_to_coordinate,
-  ).length;
 
-  const filtered = submitted.filter((student) => {
+  const willingStudents = submitted.filter(
+    (student) => student.event_registrations?.[0]?.willing_to_coordinate,
+  );
+  const willingCount = willingStudents.length;
+
+  // Extract unique values for filters
+  const uniqueRoles = Array.from(
+    new Set(
+      willingStudents.flatMap(
+        (s) => s.event_registrations[0]?.interested_roles || [],
+      ),
+    ),
+  )
+    .filter(Boolean)
+    .sort();
+  const uniqueDepts = Array.from(
+    new Set(willingStudents.map((s) => s.department)),
+  )
+    .filter((d): d is string => Boolean(d))
+    .sort();
+  const uniqueYears = Array.from(new Set(willingStudents.map((s) => s.year)))
+    .filter((y): y is string => Boolean(y))
+    .sort();
+  const uniqueSections = Array.from(
+    new Set(willingStudents.map((s) => s.class_section)),
+  )
+    .filter((c): c is string => Boolean(c))
+    .sort();
+
+  const filtered = willingStudents.filter((student) => {
     const reg = student.event_registrations?.[0];
-    const roles = reg?.interested_roles?.join(" ") || "";
+    const rolesArr = Array.isArray(reg?.interested_roles)
+      ? reg.interested_roles
+      : [];
+    const roles = rolesArr.join(" ");
 
     const query = search.toLowerCase();
-    return (
-      student.name.toLowerCase().includes(query) ||
+    const matchesSearch =
+      (student.name || "").toLowerCase().includes(query) ||
       (student.register_number || "").toLowerCase().includes(query) ||
       (student.department || "").toLowerCase().includes(query) ||
-      roles.toLowerCase().includes(query)
+      roles.toLowerCase().includes(query);
+
+    const matchesRole = roleFilter === "all" || rolesArr.includes(roleFilter);
+    const matchesDept =
+      deptFilter === "all" || student.department === deptFilter;
+    const matchesYear = yearFilter === "all" || student.year === yearFilter;
+    const matchesSection =
+      sectionFilter === "all" || student.class_section === sectionFilter;
+
+    return (
+      matchesSearch &&
+      matchesRole &&
+      matchesDept &&
+      matchesYear &&
+      matchesSection
     );
   });
 
@@ -86,7 +140,10 @@ export default function AdminWillingnessPage() {
         Year: student.year || "",
         Section: student.class_section || "",
         "Supports Event": reg.support_status ? "Yes" : "No",
-        "Interested Roles": reg.interested_roles?.join(", ") || "",
+        "Willing to Coordinate": reg.willing_to_coordinate ? "Yes" : "No",
+        "Interested Roles": Array.isArray(reg.interested_roles)
+          ? reg.interested_roles.join(", ")
+          : "",
         Remarks: reg.remarks || "",
       };
     });
@@ -117,10 +174,10 @@ export default function AdminWillingnessPage() {
         <div className="flex gap-2 items-center">
           <Input
             type="text"
-            placeholder="Search name, register no, department, role..."
+            placeholder="Search name, register no..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-72"
+            className="w-full sm:w-64"
           />
           <Button
             variant="outline"
@@ -133,6 +190,64 @@ export default function AdminWillingnessPage() {
             Export Excel
           </Button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            {uniqueRoles.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={deptFilter} onValueChange={setDeptFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Departments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {uniqueDepts.map((d) => (
+              <SelectItem key={d} value={d}>
+                {d}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={yearFilter} onValueChange={setYearFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Years" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {uniqueYears.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sectionFilter} onValueChange={setSectionFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Sections" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sections</SelectItem>
+            {uniqueSections.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border border-border overflow-x-auto">
@@ -184,7 +299,8 @@ export default function AdminWillingnessPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {reg.interested_roles?.length ? (
+                    {Array.isArray(reg.interested_roles) &&
+                    reg.interested_roles.length > 0 ? (
                       <span className="text-xs text-muted-foreground max-w-[260px] block truncate">
                         {reg.interested_roles.join(", ")}
                       </span>

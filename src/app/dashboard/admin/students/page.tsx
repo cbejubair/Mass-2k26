@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 
 interface Payment {
   id: string;
@@ -53,6 +60,9 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [sectionFilter, setSectionFilter] = useState("all");
   const [verifying, setVerifying] = useState<string | null>(null);
   const [remarkModal, setRemarkModal] = useState<{
     studentId: string;
@@ -72,12 +82,67 @@ export default function AdminStudentsPage() {
     fetchStudents();
   }, []);
 
-  const filtered = students.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.register_number?.toLowerCase().includes(search.toLowerCase()) ||
-      s.department?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const uniqueDepts = Array.from(new Set(students.map((s) => s.department)))
+    .filter((d): d is string => Boolean(d))
+    .sort();
+  const uniqueYears = Array.from(new Set(students.map((s) => s.year)))
+    .filter((y): y is string => Boolean(y))
+    .sort();
+  const uniqueSections = Array.from(
+    new Set(students.map((s) => s.class_section)),
+  )
+    .filter((c): c is string => Boolean(c))
+    .sort();
+
+  const filtered = students.filter((s) => {
+    const query = search.toLowerCase();
+    const matchesSearch =
+      s.name.toLowerCase().includes(query) ||
+      s.register_number?.toLowerCase().includes(query) ||
+      s.department?.toLowerCase().includes(query);
+
+    const matchesDept = deptFilter === "all" || s.department === deptFilter;
+    const matchesYear = yearFilter === "all" || s.year === yearFilter;
+    const matchesSection =
+      sectionFilter === "all" || s.class_section === sectionFilter;
+
+    return matchesSearch && matchesDept && matchesYear && matchesSection;
+  });
+
+  const exportExcel = () => {
+    import("xlsx").then((XLSX) => {
+      const rows = filtered.map((s, i) => {
+        const reg = s.event_registrations?.[0];
+        const pay = s.payments?.[0];
+        const qr = s.entry_qr?.[0];
+        return {
+          "S.No": i + 1,
+          "Register No": s.register_number || "",
+          Name: s.name,
+          Department: s.department || "",
+          Year: s.year || "",
+          Section: s.class_section || "",
+          Registered: reg ? "Yes" : "No",
+          Willing: reg?.willing_to_coordinate ? "Yes" : "No",
+          "Interested Roles": reg?.interested_roles?.join(", ") || "",
+          "Payment Amount": pay ? `₹${pay.amount}` : "N/A",
+          "Payment Status": pay?.payment_status || "N/A",
+          Performances: s.performance_registrations?.length || 0,
+          "Entry Status": qr?.checked_in_at
+            ? qr?.checked_out_at
+              ? "Out"
+              : "In"
+            : "Not Entered",
+          Remarks: reg?.remarks || "",
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Students");
+      XLSX.writeFile(wb, "students.xlsx");
+    });
+  };
 
   const handleVerify = async (paymentId: string, status: string) => {
     setVerifying(paymentId);
@@ -129,13 +194,69 @@ export default function AdminStudentsPage() {
         <h1 className="text-xl sm:text-2xl font-bold">
           All Students ({students.length})
         </h1>
-        <Input
-          type="text"
-          placeholder="Search name, register no, department..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full sm:w-80"
-        />
+        <div className="flex gap-2 items-center w-full sm:w-auto">
+          <Input
+            type="text"
+            placeholder="Search name, register no..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full sm:w-64"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportExcel}
+            disabled={filtered.length === 0}
+            className="flex-shrink-0"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export Excel
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Select value={deptFilter} onValueChange={setDeptFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Departments" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Departments</SelectItem>
+            {uniqueDepts.map((d) => (
+              <SelectItem key={d} value={d}>
+                {d}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={yearFilter} onValueChange={setYearFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Years" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {uniqueYears.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sectionFilter} onValueChange={setSectionFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="All Sections" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sections</SelectItem>
+            {uniqueSections.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-lg border border-border overflow-x-auto">
