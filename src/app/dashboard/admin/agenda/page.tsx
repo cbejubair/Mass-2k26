@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Trash2, Clock, Drama, Wrench } from "lucide-react";
+import { Loader2, Trash2, Drama, Wrench } from "lucide-react";
 
 interface AgendaItem {
   id: string;
@@ -27,10 +27,11 @@ interface Performance {
   id: string;
   performance_type: string;
   leader_name: string;
+  approval_status: "approved" | "pending" | "rejected";
   users: {
     name: string;
     register_number: string;
-  };
+  } | null;
 }
 
 export default function AdminAgendaPage() {
@@ -38,6 +39,7 @@ export default function AdminAgendaPage() {
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [performanceSearch, setPerformanceSearch] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     startTime: "",
@@ -47,30 +49,57 @@ export default function AdminAgendaPage() {
     stageRequirements: "",
   });
   const [error, setError] = useState("");
+  const [fetchError, setFetchError] = useState("");
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    setFetchError("");
     try {
-      const [agendaRes, perfRes] = await Promise.all([
-        fetch("/api/agenda").then((r) => r.json()),
-        fetch("/api/performances/submit").then((r) => r.json()),
+      const [agendaResp, perfResp] = await Promise.all([
+        fetch("/api/agenda"),
+        fetch("/api/performances/submit"),
       ]);
+
+      const [agendaRes, perfRes] = await Promise.all([
+        agendaResp.json(),
+        perfResp.json(),
+      ]);
+
+      if (!agendaResp.ok) {
+        throw new Error(agendaRes.error || "Failed to load agenda");
+      }
+      if (!perfResp.ok) {
+        throw new Error(perfRes.error || "Failed to load performances");
+      }
+
       setAgenda(agendaRes.agenda || []);
-      setPerformances(
-        (perfRes.performances || []).filter(
-          (p: Performance & { approval_status: string }) =>
-            p.approval_status === "approved",
-        ),
-      );
-    } catch {
-      console.error("Failed to fetch");
+      setPerformances((perfRes.performances || []) as Performance[]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch";
+      setFetchError(msg);
+      console.error(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  const filteredPerformances = performances.filter((p) => {
+    const q = performanceSearch.toLowerCase().trim();
+    if (!q) return true;
+    const text = [
+      p.performance_type,
+      p.leader_name,
+      p.users?.name || "",
+      p.users?.register_number || "",
+      p.approval_status,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return text.includes(q);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +168,12 @@ export default function AdminAgendaPage() {
         </Button>
       </div>
 
+      {fetchError && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {fetchError}
+        </div>
+      )}
+
       {showForm && (
         <Card>
           <CardContent className="p-5">
@@ -162,6 +197,11 @@ export default function AdminAgendaPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Assign Performance (optional)</Label>
+                  <Input
+                    value={performanceSearch}
+                    onChange={(e) => setPerformanceSearch(e.target.value)}
+                    placeholder="Search performance, leader, student..."
+                  />
                   <select
                     value={formData.assignedPerformanceId}
                     onChange={(e) =>
@@ -173,12 +213,18 @@ export default function AdminAgendaPage() {
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">None</option>
-                    {performances.map((p) => (
+                    {filteredPerformances.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.performance_type} - {p.leader_name} ({p.users?.name})
+                        [{p.approval_status.toUpperCase()}] {p.performance_type}{" "}
+                        - {p.leader_name}
+                        {p.users?.name ? ` (${p.users.name})` : ""}
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-muted-foreground">
+                    Showing {filteredPerformances.length} of{" "}
+                    {performances.length} registered performances.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Start Time</Label>

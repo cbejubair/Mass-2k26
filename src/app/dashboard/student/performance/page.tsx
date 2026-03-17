@@ -40,7 +40,6 @@ import {
   Lock,
   Play,
   Pause,
-  Volume2,
   SkipBack,
 } from "lucide-react";
 
@@ -71,6 +70,33 @@ interface TeamPerformance {
   leader_name: string;
   approval_status: string;
 }
+
+interface PaymentEligibility {
+  eligible: boolean;
+  status:
+    | "eligible_approved"
+    | "eligible_pending"
+    | "ineligible_unpaid"
+    | "ineligible_rejected"
+    | "ineligible_insufficient";
+  requiredAmount: number;
+  paidAmount: number;
+  paymentStatus: "approved" | "pending" | "rejected" | null;
+  message: string;
+}
+
+interface LookupPreviewFound {
+  found: true;
+  user: TeamMemberResolved;
+  paymentEligibility: PaymentEligibility;
+}
+
+interface LookupPreviewMissing {
+  found: false;
+  regNo: string;
+}
+
+type LookupPreview = LookupPreviewFound | LookupPreviewMissing;
 
 const MAX_EVENTS = 3;
 
@@ -264,7 +290,8 @@ function MusicPlayer({ url }: { url: string }) {
 
 export default function PerformancePage() {
   const whatsappGroupLink =
-    process.env.NEXT_PUBLIC_PERFORMANCE_WHATSAPP_GROUP_LINK?.trim() || "https://chat.whatsapp.com/KB6NSCbpiLk2rGwNe2TtO6?mode=gi_t";
+    process.env.NEXT_PUBLIC_PERFORMANCE_WHATSAPP_GROUP_LINK?.trim() ||
+    "https://chat.whatsapp.com/KB6NSCbpiLk2rGwNe2TtO6?mode=gi_t";
 
   // data
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
@@ -288,11 +315,12 @@ export default function PerformancePage() {
     [],
   );
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupPreview, setLookupPreview] = useState<
-    | { found: true; user: TeamMemberResolved }
-    | { found: false; regNo: string }
-    | null
-  >(null);
+  const [lookupPreview, setLookupPreview] = useState<LookupPreview | null>(
+    null,
+  );
+  const [paymentEligibility, setPaymentEligibility] =
+    useState<PaymentEligibility | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -312,29 +340,37 @@ export default function PerformancePage() {
   ];
 
   const totalEvents = performances.length + teamPerformances.length;
-  const canAddMore = totalEvents < MAX_EVENTS && !editingId;
+  const canSubmitPerformance = paymentEligibility?.eligible ?? false;
+  const canAddMore =
+    totalEvents < MAX_EVENTS && !editingId && canSubmitPerformance;
   const canShowWhatsappLink = totalEvents > 0;
 
   // ─── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchAll = async () => {
     setPageLoading(true);
+    setEligibilityLoading(true);
     try {
-      const [ownRes, teamRes] = await Promise.all([
+      const [ownRes, teamRes, eligibilityRes] = await Promise.all([
         fetch("/api/performances/submit"),
         fetch("/api/performances/team"),
+        fetch("/api/performances/eligibility"),
       ]);
-      const [ownData, teamData] = await Promise.all([
+      const [ownData, teamData, eligibilityData] = await Promise.all([
         ownRes.json(),
         teamRes.json(),
+        eligibilityRes.json(),
       ]);
       setPerformances(ownData.performances || []);
       setTeamPerformances(teamData.teamPerformances || []);
+      setPaymentEligibility(eligibilityData.eligibility || null);
     } catch {
       setPerformances([]);
       setTeamPerformances([]);
+      setPaymentEligibility(null);
     } finally {
       setPageLoading(false);
+      setEligibilityLoading(false);
     }
   };
 
@@ -402,7 +438,11 @@ export default function PerformancePage() {
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
-          setLookupPreview({ found: true, user: data.user });
+          setLookupPreview({
+            found: true,
+            user: data.user,
+            paymentEligibility: data.paymentEligibility,
+          });
           return;
         }
       }
@@ -416,11 +456,20 @@ export default function PerformancePage() {
   };
 
   const confirmAddMember = () => {
-    if (!lookupPreview || !lookupPreview.found) return;
+    if (
+      !lookupPreview ||
+      !lookupPreview.found ||
+      !lookupPreview.paymentEligibility?.eligible
+    ) {
+      return;
+    }
     const { user } = lookupPreview;
-    setTeamMembers((prev) => [...prev, user.register_number]);
+    setTeamMembers((prev) => {
+      const updated = [...prev, user.register_number];
+      setParticipantsCount(String(updated.length + 1));
+      return updated;
+    });
     setResolvedMembers((prev) => [...prev, user]);
-    setParticipantsCount(String(teamMembers.length + 2));
     setMemberRegNo("");
     setLookupPreview(null);
   };
@@ -515,10 +564,14 @@ export default function PerformancePage() {
           <Button
             type="button"
             onClick={handleNewPerformance}
-            disabled={!canAddMore || showForm}
+            disabled={eligibilityLoading || !canAddMore || showForm}
             className="w-full sm:w-auto gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-40"
           >
-            {totalEvents >= MAX_EVENTS && !editingId ? (
+            {!canSubmitPerformance ? (
+              <>
+                <Lock className="h-4 w-4" /> Payment Required
+              </>
+            ) : totalEvents >= MAX_EVENTS && !editingId ? (
               <>
                 <Lock className="h-4 w-4" /> Limit Reached
               </>
@@ -548,6 +601,50 @@ export default function PerformancePage() {
           </div>
         </div>
       )}
+
+      {/* ── Payment eligibility banner ── */}
+      {!eligibilityLoading &&
+        paymentEligibility &&
+        !paymentEligibility.eligible && (
+          <div className="relative overflow-hidden flex items-start gap-3 rounded-xl border border-red-500/25 bg-gradient-to-r from-red-500/10 to-red-500/5 px-4 py-3.5 text-sm text-red-300">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500 rounded-l-xl" />
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
+            <div>
+              <p className="font-semibold text-red-300 mb-0.5">
+                Payment required to register performances
+              </p>
+              <p className="text-xs text-red-400/80">
+                You need at least Rs.{paymentEligibility.requiredAmount} with
+                status pending or approved. Current status:{" "}
+                {paymentEligibility.paymentStatus || "not submitted"}.
+              </p>
+              <a
+                href="/dashboard/student/payment"
+                className="inline-flex mt-2 text-xs font-medium text-red-300 underline underline-offset-2"
+              >
+                Go to Payment Page
+              </a>
+            </div>
+          </div>
+        )}
+
+      {!eligibilityLoading &&
+        paymentEligibility &&
+        paymentEligibility.status === "eligible_pending" && (
+          <div className="relative overflow-hidden flex items-start gap-3 rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 to-amber-500/5 px-4 py-3.5 text-sm text-amber-300">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-amber-500 rounded-l-xl" />
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+            <div>
+              <p className="font-semibold text-amber-300 mb-0.5">
+                Payment verification pending
+              </p>
+              <p className="text-xs text-amber-400/80">
+                You can still register performances while your Rs.
+                {paymentEligibility.paidAmount} payment is under review.
+              </p>
+            </div>
+          </div>
+        )}
 
       {/* ── Success banner ── */}
       {success && !showForm && (
@@ -623,6 +720,15 @@ export default function PerformancePage() {
                 <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-red-400">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   {error}
+                </div>
+              )}
+
+              {!canSubmitPerformance && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  Performance registration is disabled until you pay at least
+                  Rs.
+                  {paymentEligibility?.requiredAmount || 500}.
                 </div>
               )}
 
@@ -739,7 +845,12 @@ export default function PerformancePage() {
                     <div
                       className={`rounded-lg border p-3 ${
                         lookupPreview.found
-                          ? "border-emerald-500/30 bg-emerald-500/10"
+                          ? lookupPreview.paymentEligibility?.eligible
+                            ? lookupPreview.paymentEligibility.status ===
+                              "eligible_pending"
+                              ? "border-amber-500/30 bg-amber-500/10"
+                              : "border-emerald-500/30 bg-emerald-500/10"
+                            : "border-red-500/30 bg-red-500/10"
                           : "border-red-500/30 bg-red-500/10"
                       }`}
                     >
@@ -749,13 +860,44 @@ export default function PerformancePage() {
                             {lookupPreview.user.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-emerald-300">
+                            <p
+                              className={`text-sm font-semibold ${
+                                lookupPreview.paymentEligibility?.eligible
+                                  ? lookupPreview.paymentEligibility.status ===
+                                    "eligible_pending"
+                                    ? "text-amber-300"
+                                    : "text-emerald-300"
+                                  : "text-red-300"
+                              }`}
+                            >
                               {lookupPreview.user.name}
                             </p>
-                            <p className="text-[11px] text-emerald-400/70">
+                            <p
+                              className={`text-[11px] ${
+                                lookupPreview.paymentEligibility?.eligible
+                                  ? lookupPreview.paymentEligibility.status ===
+                                    "eligible_pending"
+                                    ? "text-amber-400/70"
+                                    : "text-emerald-400/70"
+                                  : "text-red-400/70"
+                              }`}
+                            >
                               {lookupPreview.user.register_number}
                               {lookupPreview.user.department &&
                                 ` · ${lookupPreview.user.department} ${lookupPreview.user.year}`}
+                            </p>
+                            <p
+                              className={`text-[11px] mt-0.5 ${
+                                lookupPreview.paymentEligibility?.eligible
+                                  ? lookupPreview.paymentEligibility.status ===
+                                    "eligible_pending"
+                                    ? "text-amber-300/80"
+                                    : "text-emerald-300/80"
+                                  : "text-red-300/80"
+                              }`}
+                            >
+                              {lookupPreview.paymentEligibility?.message ||
+                                "Payment status unavailable."}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -763,10 +905,15 @@ export default function PerformancePage() {
                               type="button"
                               size="sm"
                               onClick={confirmAddMember}
+                              disabled={
+                                !lookupPreview.paymentEligibility?.eligible
+                              }
                               className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1"
                             >
                               <CheckCircle2 className="h-3 w-3" />
-                              Add
+                              {lookupPreview.paymentEligibility?.eligible
+                                ? "Add"
+                                : "Blocked"}
                             </Button>
                             <button
                               type="button"
@@ -921,7 +1068,7 @@ export default function PerformancePage() {
               <div className="flex gap-2 pt-1">
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !canSubmitPerformance}
                   className="flex-1 bg-purple-600 hover:bg-purple-700"
                 >
                   {loading ? (

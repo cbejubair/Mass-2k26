@@ -17,11 +17,11 @@ import * as XLSX from "xlsx";
 
 interface StudentWillingness {
   id: string;
-  register_number: string;
+  register_number: string | null;
   name: string;
-  department: string;
-  year: string;
-  class_section: string;
+  department: string | null;
+  year: string | null;
+  class_section: string | null;
   event_registrations: {
     support_status: boolean;
     willing_to_coordinate: boolean;
@@ -34,22 +34,35 @@ export default function AdminWillingnessPage() {
   const [students, setStudents] = useState<StudentWillingness[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/students")
-      .then((r) => r.json())
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.error || "Failed to load students");
+        }
+        return data;
+      })
       .then((data) => setStudents(data.students || []))
-      .catch(() => {})
+      .catch((err) => {
+        setLoadError(
+          err instanceof Error ? err.message : "Failed to load data",
+        );
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  // Only show students who submitted the form AND are willing to coordinate
-  const willing = students.filter(
-    (student) =>
-      student.event_registrations?.[0]?.willing_to_coordinate === true,
+  // Students who submitted willingness form
+  const submitted = students.filter(
+    (student) => (student.event_registrations?.length || 0) > 0,
   );
+  const willingCount = submitted.filter(
+    (student) => student.event_registrations?.[0]?.willing_to_coordinate,
+  ).length;
 
-  const filtered = willing.filter((student) => {
+  const filtered = submitted.filter((student) => {
     const reg = student.event_registrations?.[0];
     const roles = reg?.interested_roles?.join(" ") || "";
 
@@ -67,11 +80,11 @@ export default function AdminWillingnessPage() {
       const reg = student.event_registrations[0];
       return {
         "S.No": i + 1,
-        "Register No": student.register_number,
+        "Register No": student.register_number || "",
         Name: student.name,
-        Department: student.department,
-        Year: student.year,
-        Section: student.class_section,
+        Department: student.department || "",
+        Year: student.year || "",
+        Section: student.class_section || "",
         "Supports Event": reg.support_status ? "Yes" : "No",
         "Interested Roles": reg.interested_roles?.join(", ") || "",
         Remarks: reg.remarks || "",
@@ -98,7 +111,7 @@ export default function AdminWillingnessPage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Willingness Details</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {willing.length} willing to coordinate
+            {submitted.length} submitted • {willingCount} willing to coordinate
           </p>
         </div>
         <div className="flex gap-2 items-center">
@@ -123,6 +136,11 @@ export default function AdminWillingnessPage() {
       </div>
 
       <div className="rounded-lg border border-border overflow-x-auto">
+        {loadError && (
+          <p className="px-4 py-3 text-sm text-red-400 border-b border-red-500/20 bg-red-500/10">
+            {loadError}
+          </p>
+        )}
         <Table className="min-w-[800px]">
           <TableHeader>
             <TableRow>
@@ -131,6 +149,7 @@ export default function AdminWillingnessPage() {
               <TableHead>Dept</TableHead>
               <TableHead>Year/Sec</TableHead>
               <TableHead>Support</TableHead>
+              <TableHead>Willing</TableHead>
               <TableHead>Interested Roles</TableHead>
               <TableHead>Remarks</TableHead>
             </TableRow>
@@ -141,18 +160,27 @@ export default function AdminWillingnessPage() {
               return (
                 <TableRow key={student.id}>
                   <TableCell className="font-mono text-sm">
-                    {student.register_number}
+                    {student.register_number || "-"}
                   </TableCell>
                   <TableCell>{student.name}</TableCell>
-                  <TableCell>{student.department}</TableCell>
+                  <TableCell>{student.department || "-"}</TableCell>
                   <TableCell>
-                    {student.year} {student.class_section}
+                    {student.year || "-"} {student.class_section || ""}
                   </TableCell>
                   <TableCell>
                     <Badge
                       variant={reg.support_status ? "default" : "secondary"}
                     >
                       {reg.support_status ? "Yes" : "No"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        reg.willing_to_coordinate ? "default" : "secondary"
+                      }
+                    >
+                      {reg.willing_to_coordinate ? "Yes" : "No"}
                     </Badge>
                   </TableCell>
                   <TableCell>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import { evaluatePerformancePaymentEligibility } from "@/lib/performance-payment-rule";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     const { data } = await supabaseAdmin
       .from("users")
-      .select("register_number, name, department, year, class_section")
+      .select("id, register_number, name, department, year, class_section")
       .eq("register_number", regNo.trim().toUpperCase())
       .eq("role", "student")
       .single();
@@ -25,7 +26,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ user: null });
     }
 
-    return NextResponse.json({ user: data });
+    const { data: payment } = await supabaseAdmin
+      .from("payments")
+      .select("amount, payment_status")
+      .eq("user_id", data.id)
+      .maybeSingle();
+
+    const eligibility = evaluatePerformancePaymentEligibility(
+      payment as {
+        amount: number;
+        payment_status: "approved" | "pending" | "rejected";
+      } | null,
+    );
+
+    return NextResponse.json({
+      user: {
+        register_number: data.register_number,
+        name: data.name,
+        department: data.department,
+        year: data.year,
+        class_section: data.class_section,
+      },
+      paymentEligibility: eligibility,
+    });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
+import {
+  evaluatePerformancePaymentEligibility,
+  getPerformancePaymentEligibilityByUserId,
+} from "@/lib/performance-payment-rule";
 
 type ResolvedMember = {
   register_number: string;
@@ -87,6 +91,49 @@ async function uploadMusicIfProvided(
   return urlData.publicUrl;
 }
 
+async function findIneligibleTeamMembers(memberRegNos: string[]) {
+  if (memberRegNos.length === 0) return [] as string[];
+
+  const uniqueRegNos = Array.from(
+    new Set(memberRegNos.map((m) => m.trim().toUpperCase()).filter(Boolean)),
+  );
+
+  if (uniqueRegNos.length === 0) return [] as string[];
+
+  const { data: users } = await supabaseAdmin
+    .from("users")
+    .select("id, register_number")
+    .in("register_number", uniqueRegNos)
+    .eq("role", "student");
+
+  const userMap = new Map((users || []).map((u) => [u.register_number, u.id]));
+  const userIds = Array.from(userMap.values());
+
+  const { data: payments } = userIds.length
+    ? await supabaseAdmin
+        .from("payments")
+        .select("user_id, amount, payment_status")
+        .in("user_id", userIds)
+    : {
+        data: [] as {
+          user_id: string;
+          amount: number;
+          payment_status: "approved" | "pending" | "rejected";
+        }[],
+      };
+
+  const paymentByUserId = new Map((payments || []).map((p) => [p.user_id, p]));
+
+  const ineligible = uniqueRegNos.filter((regNo) => {
+    const userId = userMap.get(regNo);
+    if (!userId) return true;
+    const payment = paymentByUserId.get(userId) || null;
+    return !evaluatePerformancePaymentEligibility(payment).eligible;
+  });
+
+  return ineligible;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(["student"]);
@@ -106,6 +153,16 @@ export async function POST(req: NextRequest) {
           error:
             "Performance type, participants count, and leader name are required",
         },
+        { status: 400 },
+      );
+    }
+
+    const ownEligibility = await getPerformancePaymentEligibilityByUserId(
+      session.userId,
+    );
+    if (!ownEligibility.eligible) {
+      return NextResponse.json(
+        { error: ownEligibility.message, eligibility: ownEligibility },
         { status: 400 },
       );
     }
@@ -145,6 +202,28 @@ export async function POST(req: NextRequest) {
       teamMembersRaw,
       isTeam,
     );
+
+    if (isTeam && teamMembersRaw) {
+      let parsedMembers: string[] = [];
+      try {
+        parsedMembers = JSON.parse(teamMembersRaw);
+      } catch {
+        parsedMembers = [];
+      }
+
+      const ineligibleMemberRegNos =
+        await findIneligibleTeamMembers(parsedMembers);
+      if (ineligibleMemberRegNos.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "All team members must have at least Rs.500 payment in pending or approved status.",
+            ineligibleTeamMembers: ineligibleMemberRegNos,
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     let musicFileUrl: string | null = null;
     try {
@@ -224,6 +303,16 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const ownEligibility = await getPerformancePaymentEligibilityByUserId(
+      session.userId,
+    );
+    if (!ownEligibility.eligible) {
+      return NextResponse.json(
+        { error: ownEligibility.message, eligibility: ownEligibility },
+        { status: 400 },
+      );
+    }
+
     const { data: existing } = await supabaseAdmin
       .from("performance_registrations")
       .select("id, music_file_url")
@@ -242,6 +331,28 @@ export async function PUT(req: NextRequest) {
       teamMembersRaw,
       isTeam,
     );
+
+    if (isTeam && teamMembersRaw) {
+      let parsedMembers: string[] = [];
+      try {
+        parsedMembers = JSON.parse(teamMembersRaw);
+      } catch {
+        parsedMembers = [];
+      }
+
+      const ineligibleMemberRegNos =
+        await findIneligibleTeamMembers(parsedMembers);
+      if (ineligibleMemberRegNos.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "All team members must have at least Rs.500 payment in pending or approved status.",
+            ineligibleTeamMembers: ineligibleMemberRegNos,
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     let musicFileUrl: string | null = existing.music_file_url;
     try {
