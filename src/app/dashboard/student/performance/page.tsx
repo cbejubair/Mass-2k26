@@ -306,6 +306,7 @@ export default function PerformancePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [performanceType, setPerformanceType] = useState("");
+  const [otherPerformanceName, setOtherPerformanceName] = useState("");
   const [participantsCount, setParticipantsCount] = useState("1");
   const [leaderName, setLeaderName] = useState("");
   const [specialRequirements, setSpecialRequirements] = useState("");
@@ -384,6 +385,7 @@ export default function PerformancePage() {
 
   const resetForm = () => {
     setPerformanceType("");
+    setOtherPerformanceName("");
     setParticipantsCount("1");
     setLeaderName("");
     setSpecialRequirements("");
@@ -406,7 +408,14 @@ export default function PerformancePage() {
 
   const handleEditPerformance = (p: StudentPerformance) => {
     setEditingId(p.id);
-    setPerformanceType(p.performance_type || "");
+    const perfType = p.performance_type || "";
+    if (perfType.startsWith("Other - ")) {
+      setPerformanceType("Other");
+      setOtherPerformanceName(perfType.replace("Other - ", "").trim());
+    } else {
+      setPerformanceType(perfType);
+      setOtherPerformanceName("");
+    }
     setParticipantsCount(String(p.participants_count || 1));
     setLeaderName(p.leader_name || "");
     setSpecialRequirements(p.special_requirements || "");
@@ -504,6 +513,11 @@ export default function PerformancePage() {
       }
     }
 
+    if (performanceType === "Other" && !otherPerformanceName.trim()) {
+      setError("Please enter the performance name for Other category.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setSuccess(false);
@@ -513,6 +527,9 @@ export default function PerformancePage() {
         const fd = new FormData();
         if (editingId) fd.append("performanceId", editingId);
         fd.append("performanceType", performanceType);
+        if (performanceType === "Other") {
+          fd.append("otherPerformanceName", otherPerformanceName.trim());
+        }
         fd.append("participantsCount", participantsCount);
         fd.append("leaderName", leaderName);
         fd.append("specialRequirements", specialRequirements);
@@ -787,7 +804,10 @@ export default function PerformancePage() {
                 <Label>Performance Type</Label>
                 <Select
                   value={performanceType}
-                  onValueChange={setPerformanceType}
+                  onValueChange={(value) => {
+                    setPerformanceType(value);
+                    if (value !== "Other") setOtherPerformanceName("");
+                  }}
                   required
                 >
                   <SelectTrigger>
@@ -802,6 +822,18 @@ export default function PerformancePage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {performanceType === "Other" && (
+                <div className="space-y-2">
+                  <Label>Other Performance Name</Label>
+                  <Input
+                    value={otherPerformanceName}
+                    onChange={(e) => setOtherPerformanceName(e.target.value)}
+                    placeholder="Enter custom performance name"
+                    required
+                  />
+                </div>
+              )}
 
               {/* Leader name */}
               <div className="space-y-2">
@@ -981,11 +1013,11 @@ export default function PerformancePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-red-300">
-                              Student not found
+                              User not found
                             </p>
                             <p className="text-[11px] text-red-400/70">
-                              {lookupPreview.regNo} is not a registered student.
-                              Only registered students can be added.
+                              {lookupPreview.regNo} is not a registered user.
+                              Only registered users can be added.
                             </p>
                           </div>
                           <button
@@ -1118,7 +1150,12 @@ export default function PerformancePage() {
               <div className="flex gap-2 pt-1">
                 <Button
                   type="submit"
-                  disabled={loading || !canSubmitPerformance}
+                  disabled={
+                    loading ||
+                    !canSubmitPerformance ||
+                    (performanceType === "Other" &&
+                      !otherPerformanceName.trim())
+                  }
                   className="flex-1 bg-purple-600 hover:bg-purple-700"
                 >
                   {loading ? (

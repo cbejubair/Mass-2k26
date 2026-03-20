@@ -5,7 +5,14 @@ import StatCard from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Users, CreditCard, ScanLine, Download } from "lucide-react";
+import {
+  Loader2,
+  Users,
+  CreditCard,
+  ScanLine,
+  Download,
+  Disc3,
+} from "lucide-react";
 import Link from "next/link";
 
 interface ClassStats {
@@ -84,6 +91,16 @@ export default function CoordinatorDashboard() {
             <Badge variant="secondary">Scope: {classScope.label}</Badge>
           </div>
         )}
+        <div className="mt-3">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            onClick={() => window.dispatchEvent(new Event("open-dj-poll"))}
+          >
+            <Disc3 className="h-4 w-4" /> Show DJ Poll
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">

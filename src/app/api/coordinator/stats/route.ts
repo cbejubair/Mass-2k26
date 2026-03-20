@@ -18,14 +18,20 @@ export async function GET() {
 
     let studentQuery = supabaseAdmin
       .from("users")
-      .select("id")
+      .select("id, register_number")
       .eq("role", "student");
 
     studentQuery = applyStudentScope(studentQuery, scope);
 
     const { data: students } = await studentQuery;
 
-    const studentIds = (students || []).map((s) => s.id);
+    const studentRows = students || [];
+    const studentIds = studentRows.map((s) => s.id);
+    const scopedRegisterNumbers = new Set(
+      studentRows
+        .map((s) => s.register_number?.trim().toUpperCase())
+        .filter(Boolean),
+    );
 
     if (studentIds.length === 0) {
       return NextResponse.json({
@@ -46,20 +52,25 @@ export async function GET() {
       });
     }
 
-    const [payResult, perfResult, regResult] = await Promise.all([
-      supabaseAdmin
-        .from("payments")
-        .select("payment_status, amount")
-        .in("user_id", studentIds),
-      supabaseAdmin
-        .from("performance_registrations")
-        .select("id")
-        .in("user_id", studentIds),
-      supabaseAdmin
-        .from("event_registrations")
-        .select("support_status, willing_to_coordinate")
-        .in("user_id", studentIds),
-    ]);
+    const [payResult, ownedPerfResult, teamPerfResult, regResult] =
+      await Promise.all([
+        supabaseAdmin
+          .from("payments")
+          .select("payment_status, amount")
+          .in("user_id", studentIds),
+        supabaseAdmin
+          .from("performance_registrations")
+          .select("id")
+          .in("user_id", studentIds),
+        supabaseAdmin
+          .from("performance_registrations")
+          .select("id, team_members")
+          .eq("is_team", true),
+        supabaseAdmin
+          .from("event_registrations")
+          .select("support_status, willing_to_coordinate")
+          .in("user_id", studentIds),
+      ]);
 
     const payments = payResult.data || [];
     const registrations = regResult.data || [];
@@ -73,6 +84,28 @@ export async function GET() {
     const pendingAmount = payments
       .filter((p) => p.payment_status === "pending")
       .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const ownedPerformanceIds = new Set(
+      (ownedPerfResult.data || []).map((p) => p.id),
+    );
+    const teamPerformanceIds = new Set(
+      (teamPerfResult.data || [])
+        .filter((perf) => {
+          const members = Array.isArray(perf.team_members)
+            ? (perf.team_members as { register_number?: string }[])
+            : [];
+
+          return members.some((member) => {
+            const regNo = member.register_number?.trim().toUpperCase();
+            return !!regNo && scopedRegisterNumbers.has(regNo);
+          });
+        })
+        .map((perf) => perf.id),
+    );
+    const totalPerformances = new Set([
+      ...ownedPerformanceIds,
+      ...teamPerformanceIds,
+    ]).size;
 
     return NextResponse.json({
       classScope: scope,
@@ -88,7 +121,7 @@ export async function GET() {
           .length,
         totalPaid,
         pendingPayments,
-        totalPerformances: (perfResult.data || []).length,
+        totalPerformances,
       },
     });
   } catch (err) {

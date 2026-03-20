@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
       .from("users")
       .select("id, register_number, name, department, year, class_section")
       .eq("register_number", regNo.trim().toUpperCase())
-      .eq("role", "student")
       .single();
 
     if (!data) {

@@ -5,6 +5,11 @@ import {
   evaluatePerformancePaymentEligibility,
   getPerformancePaymentEligibilityByUserId,
 } from "@/lib/performance-payment-rule";
+import {
+  applyStudentScope,
+  getCoordinatorScope,
+  isCoordinatorDashboardRole,
+} from "@/lib/coordinator-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -16,6 +21,30 @@ type ResolvedMember = {
   year: string;
   class_section: string;
 };
+
+function normalizePerformanceType(
+  performanceType: string,
+  otherPerformanceName: string,
+) {
+  const type = performanceType?.trim();
+  const otherName = otherPerformanceName?.trim();
+
+  if (!type) {
+    return { error: "Performance type is required" } as const;
+  }
+
+  if (type !== "Other") {
+    return { value: type } as const;
+  }
+
+  if (!otherName) {
+    return {
+      error: "Please enter the performance name for Other category.",
+    } as const;
+  }
+
+  return { value: `Other - ${otherName}` } as const;
+}
 
 async function resolveTeamMembers(teamMembersRaw: string, isTeam: boolean) {
   let resolvedTeamMembers: ResolvedMember[] = [];
@@ -109,8 +138,7 @@ async function findIneligibleTeamMembers(memberRegNos: string[]) {
   const { data: users } = await supabaseAdmin
     .from("users")
     .select("id, register_number")
-    .in("register_number", uniqueRegNos)
-    .eq("role", "student");
+    .in("register_number", uniqueRegNos);
 
   const userMap = new Map((users || []).map((u) => [u.register_number, u.id]));
   const userIds = Array.from(userMap.values());
@@ -146,6 +174,8 @@ export async function POST(req: NextRequest) {
     const registerRef = session.registerNumber || session.userId;
     const formData = await req.formData();
     const performanceType = formData.get("performanceType") as string;
+    const otherPerformanceName =
+      (formData.get("otherPerformanceName") as string) || "";
     const participantsCount = formData.get("participantsCount") as string;
     const leaderName = formData.get("leaderName") as string;
     const specialRequirements = formData.get("specialRequirements") as string;
@@ -159,6 +189,18 @@ export async function POST(req: NextRequest) {
           error:
             "Performance type, participants count, and leader name are required",
         },
+        { status: 400 },
+      );
+    }
+
+    const normalizedType = normalizePerformanceType(
+      performanceType,
+      otherPerformanceName,
+    );
+
+    if ("error" in normalizedType) {
+      return NextResponse.json(
+        { error: normalizedType.error },
         { status: 400 },
       );
     }
@@ -250,7 +292,7 @@ export async function POST(req: NextRequest) {
       .from("performance_registrations")
       .insert({
         user_id: session.userId,
-        performance_type: performanceType,
+        performance_type: normalizedType.value,
         participants_count: parseInt(participantsCount),
         leader_name: leaderName,
         is_team: isTeam,
@@ -285,6 +327,8 @@ export async function PUT(req: NextRequest) {
     const formData = await req.formData();
     const performanceId = formData.get("performanceId") as string;
     const performanceType = formData.get("performanceType") as string;
+    const otherPerformanceName =
+      (formData.get("otherPerformanceName") as string) || "";
     const participantsCount = formData.get("participantsCount") as string;
     const leaderName = formData.get("leaderName") as string;
     const specialRequirements = formData.get("specialRequirements") as string;
@@ -305,6 +349,18 @@ export async function PUT(req: NextRequest) {
           error:
             "Performance type, participants count, and leader name are required",
         },
+        { status: 400 },
+      );
+    }
+
+    const normalizedType = normalizePerformanceType(
+      performanceType,
+      otherPerformanceName,
+    );
+
+    if ("error" in normalizedType) {
+      return NextResponse.json(
+        { error: normalizedType.error },
         { status: 400 },
       );
     }
@@ -379,7 +435,7 @@ export async function PUT(req: NextRequest) {
     const { error } = await supabaseAdmin
       .from("performance_registrations")
       .update({
-        performance_type: performanceType,
+        performance_type: normalizedType.value,
         participants_count: parseInt(participantsCount),
         leader_name: leaderName,
         is_team: isTeam,
@@ -422,14 +478,76 @@ export async function GET() {
       return NextResponse.json({ performances: data || [] });
     }
 
-    // Admin or coordinator: get all (coordinator filtered by class in frontend)
-    const { data } = await supabaseAdmin
-      .from("performance_registrations")
-      .select(
-        "*, users(name, register_number, department, year, class_section)",
+    if (session.role === "admin") {
+      const { data } = await supabaseAdmin
+        .from("performance_registrations")
+        .select(
+          "*, users(name, register_number, department, year, class_section)",
+        );
+
+      return NextResponse.json({ performances: data || [] });
+    }
+
+    if (isCoordinatorDashboardRole(session.role)) {
+      const scope = await getCoordinatorScope(session);
+      if (!scope.canViewStats && !scope.canApprovePerformances) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      let usersQuery = supabaseAdmin
+        .from("users")
+        .select("id, register_number")
+        .eq("role", "student");
+
+      usersQuery = applyStudentScope(usersQuery, scope);
+      const { data: scopedStudents } = await usersQuery;
+
+      const scopedUserIds = (scopedStudents || []).map((s) => s.id);
+      const scopedRegisterNumbers = new Set(
+        (scopedStudents || [])
+          .map((s) => s.register_number?.trim().toUpperCase())
+          .filter(Boolean),
       );
 
-    return NextResponse.json({ performances: data || [] });
+      if (scopedUserIds.length === 0) {
+        return NextResponse.json({ performances: [] });
+      }
+
+      const [ownedRes, teamRes] = await Promise.all([
+        supabaseAdmin
+          .from("performance_registrations")
+          .select(
+            "*, users(name, register_number, department, year, class_section)",
+          )
+          .in("user_id", scopedUserIds),
+        supabaseAdmin
+          .from("performance_registrations")
+          .select(
+            "*, users(name, register_number, department, year, class_section)",
+          )
+          .eq("is_team", true),
+      ]);
+
+      const teamMemberScoped = (teamRes.data || []).filter((perf) => {
+        const members = Array.isArray(perf.team_members)
+          ? (perf.team_members as { register_number?: string }[])
+          : [];
+
+        return members.some((member) => {
+          const regNo = member.register_number?.trim().toUpperCase();
+          return !!regNo && scopedRegisterNumbers.has(regNo);
+        });
+      });
+
+      const combined = [...(ownedRes.data || []), ...teamMemberScoped];
+      const performances = combined.filter(
+        (perf, idx, arr) => arr.findIndex((x) => x.id === perf.id) === idx,
+      );
+
+      return NextResponse.json({ performances });
+    }
+
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";
