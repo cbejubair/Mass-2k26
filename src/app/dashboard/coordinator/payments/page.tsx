@@ -437,10 +437,8 @@ export default function CoordinatorPaymentsPage() {
               <TableHead>Amount</TableHead>
               <TableHead>Mode</TableHead>
               <TableHead>Screenshot</TableHead>
-              <TableHead>Submitted On</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Verified By</TableHead>
-              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -484,25 +482,7 @@ export default function CoordinatorPaymentsPage() {
                     <span className="text-muted-foreground text-sm">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                  {p.created_at ? (
-                    <>
-                      {new Date(p.created_at).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                      <br />
-                      {new Date(p.created_at).toLocaleTimeString("en-IN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
+                
                 <TableCell>
                   <Badge
                     variant={
@@ -536,42 +516,6 @@ export default function CoordinatorPaymentsPage() {
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={
-                        p.payment_status === "approved" ? "default" : "outline"
-                      }
-                      className="text-xs h-7"
-                      onClick={() => handleVerify(p.id, "approved")}
-                      disabled={
-                        verifying === p.id || p.payment_status === "approved"
-                      }
-                    >
-                      {verifying === p.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        "Approve"
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={
-                        p.payment_status === "rejected"
-                          ? "destructive"
-                          : "outline"
-                      }
-                      className="text-xs h-7"
-                      onClick={() => handleVerify(p.id, "rejected")}
-                      disabled={
-                        verifying === p.id || p.payment_status === "rejected"
-                      }
-                    >
-                      Reject
-                    </Button>
-                  </div>
                 </TableCell>
               </TableRow>
             ))}

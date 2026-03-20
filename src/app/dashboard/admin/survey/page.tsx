@@ -18,15 +18,18 @@ import {
 // ── Data types ────────────────────────────────────────────────────────────────
 
 interface SurveyUser {
+  id?: string;
   name: string;
   register_number: string;
   department: string;
   year?: string;
   class_section?: string;
+  mobile_number?: string;
 }
 
 interface SurveyEntry {
   id: string;
+  created_at?: string;
   transport_after_event: string | null;
   need_college_transport: string | null;
   transport_area: string | null;
@@ -151,33 +154,45 @@ function SectionHeader({
 
 function downloadCSV(surveys: SurveyEntry[]) {
   const headers = [
+    "Survey ID",
+    "Submitted At",
     "Name",
     "Register Number",
+    "Mobile Number",
     "Department",
     "Year",
     "Class Section",
+    "Transport After Event (Code)",
     "Transport After Event",
+    "Needs College Transport (Code)",
     "Needs College Transport",
     "Transport Area",
     "Transport Distance",
+    "Stall Interests (Code)",
     "Stall Interests",
     "Creative Suggestions",
   ];
 
   const rows = surveys.map((s) => [
+    s.id ?? "",
+    s.created_at ?? "",
     s.users?.name ?? "",
     s.users?.register_number ?? "",
+    s.users?.mobile_number ?? "",
     s.users?.department ?? "",
     s.users?.year ?? "",
     s.users?.class_section ?? "",
+    s.transport_after_event ?? "",
     TRANSPORT_AFTER_LABELS[s.transport_after_event ?? ""] ??
       s.transport_after_event ??
       "",
+    s.need_college_transport ?? "",
     COLLEGE_TRANSPORT_LABELS[s.need_college_transport ?? ""] ??
       s.need_college_transport ??
       "",
     s.transport_area ?? "",
     s.transport_distance ?? "",
+    (s.stall_interest ?? []).join("; "),
     (s.stall_interest ?? [])
       .map((k) => STALL_LABELS[k]?.replace(/^.\s/, "") ?? k)
       .join("; "),

@@ -63,6 +63,10 @@ export default function AdminStudentsPage() {
   const [deptFilter, setDeptFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const [sectionFilter, setSectionFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [remarkModal, setRemarkModal] = useState<{
     studentId: string;
@@ -71,16 +75,30 @@ export default function AdminStudentsPage() {
   const [remark, setRemark] = useState("");
 
   const fetchStudents = () => {
-    fetch("/api/admin/students")
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      search,
+      dept: deptFilter,
+      year: yearFilter,
+      section: sectionFilter,
+    });
+
+    fetch(`/api/admin/students?${params.toString()}`)
       .then((r) => r.json())
-      .then((data) => setStudents(data.students || []))
+      .then((data) => {
+        setStudents(data.students || []);
+        setTotal(data.pagination?.total || 0);
+        setTotalPages(data.pagination?.totalPages || 1);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [page, limit, search, deptFilter, yearFilter, sectionFilter]);
 
   const uniqueDepts = Array.from(new Set(students.map((s) => s.department)))
     .filter((d): d is string => Boolean(d))
@@ -94,29 +112,14 @@ export default function AdminStudentsPage() {
     .filter((c): c is string => Boolean(c))
     .sort();
 
-  const filtered = students.filter((s) => {
-    const query = search.toLowerCase();
-    const matchesSearch =
-      s.name.toLowerCase().includes(query) ||
-      s.register_number?.toLowerCase().includes(query) ||
-      s.department?.toLowerCase().includes(query);
-
-    const matchesDept = deptFilter === "all" || s.department === deptFilter;
-    const matchesYear = yearFilter === "all" || s.year === yearFilter;
-    const matchesSection =
-      sectionFilter === "all" || s.class_section === sectionFilter;
-
-    return matchesSearch && matchesDept && matchesYear && matchesSection;
-  });
-
   const exportExcel = () => {
     import("xlsx").then((XLSX) => {
-      const rows = filtered.map((s, i) => {
+      const rows = students.map((s, i) => {
         const reg = s.event_registrations?.[0];
         const pay = s.payments?.[0];
         const qr = s.entry_qr?.[0];
         return {
-          "S.No": i + 1,
+          "S.No": (page - 1) * limit + i + 1,
           "Register No": s.register_number || "",
           Name: s.name,
           Department: s.department || "",
@@ -192,21 +195,24 @@ export default function AdminStudentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-xl sm:text-2xl font-bold">
-          All Students ({students.length})
+          All Students ({total})
         </h1>
         <div className="flex gap-2 items-center w-full sm:w-auto">
           <Input
             type="text"
             placeholder="Search name, register no..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setSearch(e.target.value);
+            }}
             className="w-full sm:w-64"
           />
           <Button
             variant="outline"
             size="sm"
             onClick={exportExcel}
-            disabled={filtered.length === 0}
+            disabled={students.length === 0}
             className="flex-shrink-0"
           >
             <Download className="w-4 h-4 mr-2" />
@@ -216,7 +222,13 @@ export default function AdminStudentsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Select value={deptFilter} onValueChange={setDeptFilter}>
+        <Select
+          value={deptFilter}
+          onValueChange={(value) => {
+            setPage(1);
+            setDeptFilter(value);
+          }}
+        >
           <SelectTrigger>
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
@@ -230,7 +242,13 @@ export default function AdminStudentsPage() {
           </SelectContent>
         </Select>
 
-        <Select value={yearFilter} onValueChange={setYearFilter}>
+        <Select
+          value={yearFilter}
+          onValueChange={(value) => {
+            setPage(1);
+            setYearFilter(value);
+          }}
+        >
           <SelectTrigger>
             <SelectValue placeholder="All Years" />
           </SelectTrigger>
@@ -244,7 +262,13 @@ export default function AdminStudentsPage() {
           </SelectContent>
         </Select>
 
-        <Select value={sectionFilter} onValueChange={setSectionFilter}>
+        <Select
+          value={sectionFilter}
+          onValueChange={(value) => {
+            setPage(1);
+            setSectionFilter(value);
+          }}
+        >
           <SelectTrigger>
             <SelectValue placeholder="All Sections" />
           </SelectTrigger>
@@ -281,7 +305,7 @@ export default function AdminStudentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((s) => {
+            {students.map((s) => {
               const reg = s.event_registrations?.[0];
               const pay = s.payments?.[0];
               const qr = s.entry_qr?.[0];
@@ -430,6 +454,30 @@ export default function AdminStudentsPage() {
         </Table>
       </div>
 
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages || loading}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
       {/* Remark Modal */}
       {remarkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -462,7 +510,7 @@ export default function AdminStudentsPage() {
         </div>
       )}
 
-      {filtered.length === 0 && (
+      {students.length === 0 && (
         <p className="text-center text-muted-foreground py-8">
           No students found
         </p>

@@ -23,6 +23,7 @@ import {
   Menu,
   X,
   Settings,
+  Disc3,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { UserRole } from "@/lib/types";
@@ -55,6 +56,7 @@ const menuItems: Partial<Record<UserRole, MenuItem[]>> = {
     { label: "QR Scanner", path: "/dashboard/admin/scanner", icon: ScanLine },
     { label: "Agenda", path: "/dashboard/admin/agenda", icon: Calendar },
     { label: "Survey", path: "/dashboard/admin/survey", icon: FileText },
+    { label: "DJ Poll", path: "/dashboard/admin/poll", icon: Disc3 },
     { label: "Students", path: "/dashboard/admin/students", icon: Users },
     {
       label: "Willingness",
@@ -105,11 +107,11 @@ const menuItems: Partial<Record<UserRole, MenuItem[]>> = {
       path: "/dashboard/coordinator/payments",
       icon: CreditCard,
     },
-    {
-      label: "QR Scanner",
-      path: "/dashboard/coordinator/scanner",
-      icon: ScanLine,
-    },
+    // {
+    //   label: "QR Scanner",
+    //   path: "/dashboard/coordinator/scanner",
+    //   icon: ScanLine,
+    // },
     { label: "Stats", path: "/dashboard/coordinator/stats", icon: BarChart3 },
   ],
   faculty_coordinator: [

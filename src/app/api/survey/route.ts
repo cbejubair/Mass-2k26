@@ -2,6 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
 
+async function fetchAllSurveyFeedback() {
+  const pageSize = 1000;
+  let from = 0;
+  let allRows: any[] = [];
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from("survey_feedback")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+
+    const rows = data || [];
+    allRows = allRows.concat(rows);
+
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
+async function fetchUsersByIds(userIds: string[]) {
+  const chunkSize = 100;
+  const users: any[] = [];
+
+  for (let i = 0; i < userIds.length; i += chunkSize) {
+    const chunk = userIds.slice(i, i + chunkSize);
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select(
+        "id, name, register_number, department, year, class_section, mobile_number",
+      )
+      .in("id", chunk);
+
+    if (error) {
+      console.error("Survey users chunk fetch error:", error);
+      continue;
+    }
+    users.push(...(data || []));
+  }
+
+  return users;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(["student"]);
@@ -100,27 +147,32 @@ export async function GET() {
     }
 
     // Admin: get all with user info via two-step fetch
-    const { data: feedbackRows } = await supabaseAdmin
-      .from("survey_feedback")
-      .select("*");
-
-    const items = feedbackRows || [];
+    const items = await fetchAllSurveyFeedback();
     if (items.length === 0) {
       return NextResponse.json({ feedback: [] });
     }
 
-    const userIds = items.map((f) => f.user_id);
-    const { data: users } = await supabaseAdmin
-      .from("users")
-      .select("id, name, register_number, department, year, class_section")
-      .in("id", userIds);
+    const userIds = Array.from(
+      new Set(items.map((f) => f.user_id).filter(Boolean)),
+    );
+    const users = await fetchUsersByIds(userIds);
 
     const userMap = new Map((users || []).map((u) => [u.id, u]));
 
-    const feedbackWithUsers = items.map((f) => ({
-      ...f,
-      users: userMap.get(f.user_id) || null,
-    }));
+    const feedbackWithUsers = items.map((f) => {
+      const { user_id, ...rest } = f;
+      return {
+        ...rest,
+        users: userMap.get(user_id) || {
+          name: "Unknown User",
+          register_number: null,
+          department: null,
+          year: null,
+          class_section: null,
+          mobile_number: null,
+        },
+      };
+    });
 
     return NextResponse.json({ feedback: feedbackWithUsers });
   } catch (err) {

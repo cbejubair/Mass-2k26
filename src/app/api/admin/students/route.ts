@@ -1,27 +1,74 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { requireAuth } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await requireAuth(["admin"]);
 
-    const { data: baseStudents, error: studentsError } = await supabaseAdmin
+    const search = req.nextUrl.searchParams.get("search")?.trim() || "";
+    const dept = req.nextUrl.searchParams.get("dept")?.trim() || "all";
+    const year = req.nextUrl.searchParams.get("year")?.trim() || "all";
+    const section = req.nextUrl.searchParams.get("section")?.trim() || "all";
+
+    const pageRaw = Number(req.nextUrl.searchParams.get("page") || "1");
+    const limitRaw = Number(req.nextUrl.searchParams.get("limit") || "25");
+    const page =
+      Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
+    const limit =
+      Number.isFinite(limitRaw) && limitRaw > 0
+        ? Math.min(100, Math.floor(limitRaw))
+        : 25;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let studentsQuery = supabaseAdmin
       .from("users")
       .select(
         "id, register_number, name, department, year, class_section, mobile_number",
+        { count: "exact" },
       )
       .eq("role", "student")
-      .limit(5000)
-      .order("register_number");
+      .order("register_number")
+      .range(from, to);
+
+    if (search) {
+      const escaped = search.replace(/,/g, "");
+      studentsQuery = studentsQuery.or(
+        `name.ilike.%${escaped}%,register_number.ilike.%${escaped}%,department.ilike.%${escaped}%`,
+      );
+    }
+
+    if (dept !== "all") studentsQuery = studentsQuery.eq("department", dept);
+    if (year !== "all") studentsQuery = studentsQuery.eq("year", year);
+    if (section !== "all") {
+      studentsQuery = studentsQuery.eq("class_section", section);
+    }
+
+    const {
+      data: baseStudents,
+      error: studentsError,
+      count,
+    } = await studentsQuery;
 
     if (studentsError) {
       console.error("Admin students query error:", studentsError);
     }
 
     const students = baseStudents || [];
+    const total = count || 0;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
     if (students.length === 0) {
-      return NextResponse.json({ students: [] });
+      return NextResponse.json({
+        students: [],
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      });
     }
 
     const userIds = students.map((s) => s.id);
@@ -97,7 +144,15 @@ export async function GET() {
       })),
     }));
 
-    return NextResponse.json({ students: studentsWithRelations });
+    return NextResponse.json({
+      students: studentsWithRelations,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Internal server error";
