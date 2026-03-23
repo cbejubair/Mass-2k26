@@ -13,6 +13,7 @@ const navLinks = [
   { name: "Timeline", href: "/#events" },
   { name: "Coordinators", href: "/#coordinators" },
   { name: "Rules", href: "/rules" },
+  { name: "Stall", href: "/stall-form" },
   { name: "FAQ", href: "/faq" },
 ];
 

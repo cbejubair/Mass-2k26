@@ -106,7 +106,32 @@ CREATE TABLE survey_feedback (
 );
 
 -- ============================================
--- 6. ENTRY QR TABLE
+-- 6. STALL APPLICATIONS TABLE
+--    Public vendor interest form for event-day stalls
+-- ============================================
+CREATE TABLE stall_applications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  applicant_name TEXT NOT NULL,
+  phone_number TEXT NOT NULL,
+  email TEXT NOT NULL,
+  stall_type TEXT NOT NULL CHECK (stall_type IN ('food', 'product')),
+  stall_brand_name TEXT NOT NULL,
+  items_to_sell TEXT NOT NULL,
+  member_count INTEGER NOT NULL CHECK (member_count > 0),
+  cooking_on_site BOOLEAN NOT NULL DEFAULT false,
+  power_required BOOLEAN NOT NULL DEFAULT false,
+  expected_space TEXT NOT NULL,
+  previous_experience TEXT,
+  special_requirements TEXT,
+  accepted_terms BOOLEAN NOT NULL DEFAULT false CHECK (accepted_terms = true),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_stall_applications_created_at ON stall_applications(created_at DESC);
+CREATE INDEX idx_stall_applications_stall_type ON stall_applications(stall_type);
+
+-- ============================================
+-- 7. ENTRY QR TABLE
 --    Check-in / Check-out tracking with timestamps
 -- ============================================
 CREATE TABLE entry_qr (
@@ -125,7 +150,7 @@ CREATE INDEX idx_qr_token ON entry_qr(qr_token);
 CREATE INDEX idx_qr_user ON entry_qr(user_id);
 
 -- ============================================
--- 7. AGENDA TABLE
+-- 8. AGENDA TABLE
 -- ============================================
 CREATE TABLE agenda (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -140,7 +165,7 @@ CREATE TABLE agenda (
 CREATE INDEX idx_agenda_time ON agenda(start_time, end_time);
 
 -- ============================================
--- 8. LOGIN LOGS TABLE
+-- 9. LOGIN LOGS TABLE
 --    Successful login history for audit
 -- ============================================
 CREATE TABLE login_logs (
@@ -165,6 +190,7 @@ ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE performance_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE survey_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stall_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entry_qr ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agenda ENABLE ROW LEVEL SECURITY;
 ALTER TABLE login_logs ENABLE ROW LEVEL SECURITY;

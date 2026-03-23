@@ -7,9 +7,16 @@ const publicPaths = [
   "/api/qr/verify",
   "/api/stats",
   "/api/agenda",
+  "/api/stalls",
 ];
 
-const publicPages = ["/events", "/faq", "/rules", "/coordinators"];
+const publicPages = [
+  "/events",
+  "/faq",
+  "/rules",
+  "/coordinators",
+  "/stall-form",
+];
 
 const DASHBOARD_MAP: Record<string, string> = {
   admin: "/dashboard/admin",
