@@ -42,6 +42,10 @@ import {
   Pause,
   SkipBack,
   AlertTriangle,
+  Upload,
+  Volume2,
+  XCircle,
+  Trash2,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -100,6 +104,7 @@ interface LookupPreviewMissing {
 type LookupPreview = LookupPreviewFound | LookupPreviewMissing;
 
 type ToastType = "error" | "warning" | "success";
+type UploadStage = "idle" | "preparing" | "uploading" | "processing" | "complete" | "error";
 
 interface ToastMessage {
   id: number;
@@ -297,6 +302,329 @@ function MusicPlayer({ url }: { url: string }) {
   );
 }
 
+// ─── Audio File Preview (for selected file before upload) ─────────────────────
+
+function AudioFilePreview({
+  file,
+  onRemove,
+}: {
+  file: File;
+  onRemove: () => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [loadingMeta, setLoadingMeta] = useState(true);
+
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio(url);
+    audioRef.current = audio;
+
+    audio.addEventListener("loadedmetadata", () => {
+      setDuration(audio.duration);
+      setLoadingMeta(false);
+    });
+    audio.addEventListener("timeupdate", () => {
+      setCurrentTime(audio.currentTime);
+      setProgress(
+        audio.duration ? (audio.currentTime / audio.duration) * 100 : 0,
+      );
+    });
+    audio.addEventListener("ended", () => {
+      setPlaying(false);
+      setProgress(0);
+      setCurrentTime(0);
+      audio.currentTime = 0;
+    });
+    audio.addEventListener("error", () => setLoadingMeta(false));
+
+    return () => {
+      audio.pause();
+      audio.src = "";
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      audio.play();
+      setPlaying(true);
+    }
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = ratio * duration;
+  };
+
+  const fmt = (t: number) =>
+    Number.isFinite(t)
+      ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`
+      : "--:--";
+
+  const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+
+  return (
+    <div className="rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* File info row */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+          <Music className="h-5 w-5 text-purple-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-purple-200 truncate">
+            {file.name}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-muted-foreground">{sizeMB} MB</span>
+            {loadingMeta ? (
+              <span className="text-xs text-purple-400/70 flex items-center gap-1">
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                Reading…
+              </span>
+            ) : (
+              <span className="text-xs text-purple-400/70">
+                Duration: {fmt(duration)}
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+          title="Remove file"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Mini player */}
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={togglePlay}
+          disabled={loadingMeta}
+          className="w-8 h-8 rounded-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 border border-purple-500/40 flex items-center justify-center transition-all shadow-lg shadow-purple-500/20 shrink-0"
+          title={playing ? "Pause preview" : "Play preview"}
+        >
+          {loadingMeta ? (
+            <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+          ) : playing ? (
+            <Pause className="h-3.5 w-3.5 text-white" />
+          ) : (
+            <Play className="h-3.5 w-3.5 text-white ml-0.5" />
+          )}
+        </button>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div
+            className="h-1.5 rounded-full bg-white/10 cursor-pointer overflow-hidden group"
+            onClick={handleSeek}
+          >
+            <div
+              className="h-full rounded-full bg-purple-500 transition-all duration-100 relative"
+              style={{ width: `${progress}%` }}
+            >
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>{fmt(currentTime)}</span>
+            <span>{fmt(duration)}</span>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-purple-400/60 flex items-center gap-1">
+        <Volume2 className="h-2.5 w-2.5" />
+        Preview — this file will be uploaded when you submit
+      </p>
+    </div>
+  );
+}
+
+// ─── Upload Progress Overlay ──────────────────────────────────────────────────
+
+function UploadProgressOverlay({
+  stage,
+  progress,
+  fileName,
+  fileSize,
+  onCancel,
+}: {
+  stage: UploadStage;
+  progress: number;
+  fileName: string;
+  fileSize: number;
+  onCancel: () => void;
+}) {
+  const uploadedBytes = Math.round((progress / 100) * fileSize);
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+
+  const colorMap: Record<string, { bg: string; border: string }> = {
+    purple: { bg: "rgba(168,85,247,0.15)", border: "rgba(168,85,247,0.25)" },
+    blue: { bg: "rgba(59,130,246,0.15)", border: "rgba(59,130,246,0.25)" },
+    emerald: { bg: "rgba(16,185,129,0.15)", border: "rgba(16,185,129,0.25)" },
+    red: { bg: "rgba(239,68,68,0.15)", border: "rgba(239,68,68,0.25)" },
+  };
+
+  const stageConfig = {
+    preparing: {
+      label: "Preparing upload…",
+      sublabel: "Validating your submission",
+      color: "purple",
+      icon: <Loader2 className="h-5 w-5 text-purple-400 animate-spin" />,
+    },
+    uploading: {
+      label: `Uploading song… ${progress}%`,
+      sublabel: `${formatBytes(uploadedBytes)} / ${formatBytes(fileSize)}`,
+      color: "purple",
+      icon: <Upload className="h-5 w-5 text-purple-400 animate-bounce" />,
+    },
+    processing: {
+      label: "Processing…",
+      sublabel: "Saving your performance details",
+      color: "blue",
+      icon: <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />,
+    },
+    complete: {
+      label: "Complete!",
+      sublabel: "Your performance has been saved",
+      color: "emerald",
+      icon: <CheckCircle2 className="h-5 w-5 text-emerald-400" />,
+    },
+    error: {
+      label: "Upload failed",
+      sublabel: "Something went wrong",
+      color: "red",
+      icon: <XCircle className="h-5 w-5 text-red-400" />,
+    },
+    idle: {
+      label: "",
+      sublabel: "",
+      color: "purple",
+      icon: null,
+    },
+  };
+
+  const config = stageConfig[stage];
+  if (stage === "idle") return null;
+  const colors = colorMap[config.color] || colorMap.purple;
+
+  return (
+    <div className="absolute inset-0 z-20 rounded-xl bg-black/60 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-200">
+      <div className="w-full max-w-sm mx-6 space-y-4">
+        {/* Icon + Stage */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+            style={{
+              backgroundColor: colors.bg,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            {config.icon}
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-foreground">
+              {config.label}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {config.sublabel}
+            </p>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        {(stage === "uploading" || stage === "preparing" || stage === "processing") && (
+          <div className="space-y-2">
+            <div className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden relative">
+              {/* Shimmer base */}
+              {stage === "preparing" && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/30 to-transparent animate-pulse" />
+              )}
+              {/* Actual progress */}
+              <div
+                className="h-full rounded-full relative overflow-hidden transition-all duration-300 ease-out"
+                style={{
+                  width: stage === "preparing" ? "100%" : stage === "processing" ? "100%" : `${progress}%`,
+                  background: stage === "processing"
+                    ? "linear-gradient(90deg, #3b82f6, #6366f1, #3b82f6)"
+                    : "linear-gradient(90deg, #7c3aed, #a855f7, #7c3aed)",
+                  backgroundSize: "200% 100%",
+                  animation: (stage === "preparing" || stage === "processing")
+                    ? "shimmer 1.5s ease-in-out infinite"
+                    : undefined,
+                }}
+              >
+                {/* Glow overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  style={{
+                    animation: "shimmer 2s ease-in-out infinite",
+                  }}
+                />
+              </div>
+            </div>
+
+            {stage === "uploading" && (
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Music className="h-2.5 w-2.5" />
+                  {fileName}
+                </span>
+                <span className="font-mono">{progress}%</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Complete check animation */}
+        {stage === "complete" && (
+          <div className="flex justify-center">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center animate-in zoom-in duration-300">
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            </div>
+          </div>
+        )}
+
+        {/* Cancel button */}
+        {(stage === "preparing" || stage === "uploading") && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-full text-center text-xs text-muted-foreground hover:text-red-400 transition-colors py-1.5"
+          >
+            Cancel upload
+          </button>
+        )}
+      </div>
+
+      {/* Shimmer keyframes */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PerformancePage() {
@@ -335,6 +663,8 @@ export default function PerformancePage() {
   const [eligibilityLoading, setEligibilityLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<UploadStage>("idle");
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -434,6 +764,18 @@ export default function PerformancePage() {
     setResolvedMembers([]);
     setLookupPreview(null);
     setUploadProgress(0);
+    setUploadStage("idle");
+  };
+
+  const cancelUpload = () => {
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+      xhrRef.current = null;
+    }
+    setLoading(false);
+    setUploadProgress(0);
+    setUploadStage("idle");
+    pushToast("warning", "Upload cancelled.");
   };
 
   const handleNewPerformance = () => {
@@ -570,6 +912,7 @@ export default function PerformancePage() {
 
     setLoading(true);
     setUploadProgress(0);
+    setUploadStage(musicFile ? "preparing" : "processing");
     setSuccess(false);
     setSuccessMessage("");
     try {
@@ -594,6 +937,7 @@ export default function PerformancePage() {
         return new Promise<{ ok: boolean; status: number; data: any }>(
           (resolve, reject) => {
             const xhr = new XMLHttpRequest();
+            xhrRef.current = xhr;
             xhr.open(editingId ? "PUT" : "POST", "/api/performances/submit");
             xhr.responseType = "json";
             xhr.timeout = UPLOAD_TIMEOUT_MS;
@@ -601,9 +945,10 @@ export default function PerformancePage() {
             xhr.upload.onprogress = (event) => {
               if (!event.lengthComputable || event.total <= 0) return;
               const percent = Math.min(
-                100,
+                99,
                 Math.round((event.loaded / event.total) * 100),
               );
+              setUploadStage("uploading");
               setUploadProgress(percent);
             };
 
@@ -618,20 +963,30 @@ export default function PerformancePage() {
                   responseData = {};
                 }
               }
+              setUploadStage("processing");
               setUploadProgress(100);
-              resolve({
-                ok: xhr.status >= 200 && xhr.status < 300,
-                status: xhr.status,
-                data: responseData,
-              });
+              // Brief processing delay for visual feedback
+              setTimeout(() => {
+                resolve({
+                  ok: xhr.status >= 200 && xhr.status < 300,
+                  status: xhr.status,
+                  data: responseData,
+                });
+              }, 400);
             };
 
             xhr.onerror = () => {
+              setUploadStage("error");
               reject(new TypeError("Network request failed"));
             };
 
             xhr.ontimeout = () => {
+              setUploadStage("error");
               reject(new DOMException("Request timed out", "AbortError"));
+            };
+
+            xhr.onabort = () => {
+              reject(new DOMException("Upload cancelled", "AbortError"));
             };
 
             xhr.send(createPayload());
@@ -659,6 +1014,9 @@ export default function PerformancePage() {
         pushToast("error", data.error || "Failed to submit performance.");
         return;
       }
+      setUploadStage("complete");
+      // Show complete state briefly
+      await new Promise((r) => setTimeout(r, 800));
       setSuccess(true);
       setSuccessMessage(
         editingId
@@ -671,7 +1029,13 @@ export default function PerformancePage() {
       setShowForm(false);
     } catch (err) {
       setUploadProgress(0);
-      if (err instanceof DOMException && err.name === "AbortError") {
+      setUploadStage("error");
+      // Show error state briefly before hiding overlay
+      await new Promise((r) => setTimeout(r, 1200));
+      setUploadStage("idle");
+      if (err instanceof DOMException && err.name === "AbortError" && err.message === "Upload cancelled") {
+        // Already handled by cancelUpload
+      } else if (err instanceof DOMException && err.name === "AbortError") {
         pushToast(
           "error",
           "Upload timed out. Check your connection and try a smaller/compressed audio file.",
@@ -684,6 +1048,7 @@ export default function PerformancePage() {
       }
     } finally {
       setLoading(false);
+      xhrRef.current = null;
     }
   };
 
@@ -869,7 +1234,7 @@ export default function PerformancePage() {
 
       {/* ── Registration Form ── */}
       {showForm && (
-        <Card className="border-white/10 bg-card/50 backdrop-blur-sm shadow-xl">
+        <Card className="border-white/10 bg-card/50 backdrop-blur-sm shadow-xl relative overflow-hidden">
           <CardHeader className="pb-4 border-b border-white/5">
             <div className="flex items-center gap-2">
               <div
@@ -1199,80 +1564,75 @@ export default function PerformancePage() {
               </div>
 
               {/* Music upload */}
-              <div className="space-y-2">
-                <Label>Music Track (optional)</Label>
-                <label
-                  htmlFor="musicFile"
-                  className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] p-6 cursor-pointer hover:border-purple-500/40 hover:bg-purple-500/5 transition-all duration-200"
-                >
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={async (e) => {
-                      const selectedFile = e.target.files?.[0] || null;
-                      if (!selectedFile) {
-                        setMusicFile(null);
-                        return;
-                      }
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Music className="h-3.5 w-3.5 text-purple-400" />
+                  Music Track (optional)
+                </Label>
 
-                      if (!selectedFile.type?.startsWith("audio/")) {
-                        pushToast(
-                          "error",
-                          "Only audio files are allowed for music track upload.",
-                        );
-                        e.currentTarget.value = "";
-                        setMusicFile(null);
-                        return;
-                      }
+                {/* File selector — only show if no file selected */}
+                {!musicFile && (
+                  <label
+                    htmlFor="musicFile"
+                    className="group flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] p-6 cursor-pointer hover:border-purple-500/40 hover:bg-purple-500/5 transition-all duration-300"
+                  >
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={async (e) => {
+                        const selectedFile = e.target.files?.[0] || null;
+                        if (!selectedFile) {
+                          setMusicFile(null);
+                          return;
+                        }
 
-                      if (selectedFile.size > MAX_AUDIO_SIZE_BYTES) {
-                        pushToast(
-                          "error",
-                          "Music file must be less than 20MB.",
-                        );
-                        e.currentTarget.value = "";
-                        setMusicFile(null);
-                        return;
-                      }
+                        if (!selectedFile.type?.startsWith("audio/")) {
+                          pushToast(
+                            "error",
+                            "Only audio files are allowed for music track upload.",
+                          );
+                          e.currentTarget.value = "";
+                          setMusicFile(null);
+                          return;
+                        }
 
-                      setMusicFile(selectedFile);
-                    }}
-                    className="hidden"
-                    id="musicFile"
+                        if (selectedFile.size > MAX_AUDIO_SIZE_BYTES) {
+                          pushToast(
+                            "error",
+                            "Music file must be less than 20MB.",
+                          );
+                          e.currentTarget.value = "";
+                          setMusicFile(null);
+                          return;
+                        }
+
+                        setMusicFile(selectedFile);
+                      }}
+                      className="hidden"
+                      id="musicFile"
+                    />
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/20 group-hover:border-purple-500/30 group-hover:scale-110 transition-all duration-300">
+                      <Upload className="h-5 w-5 text-purple-400/70 group-hover:text-purple-400 transition-colors" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground group-hover:text-purple-300 transition-colors">
+                        Click to upload music track
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">
+                        MP3 / WAV · Max 20 MB
+                      </p>
+                    </div>
+                  </label>
+                )}
+
+                {/* Audio preview — show after file selection */}
+                {musicFile && (
+                  <AudioFilePreview
+                    file={musicFile}
+                    onRemove={() => setMusicFile(null)}
                   />
-                  {musicFile ? (
-                    <>
-                      <div className="w-10 h-10 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                        <Music className="h-5 w-5 text-purple-400" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-purple-300">
-                          {musicFile.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {(musicFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        Click to change
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                        <Music className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload music track
-                        </p>
-                        <p className="text-xs text-muted-foreground/60 mt-0.5">
-                          MP3 / WAV · Max 20 MB
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </label>
+                )}
+
                 <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-200">
                   <p className="font-semibold mb-1">Music rules</p>
                   <p>Song duration must be less than 5 minutes.</p>
@@ -1286,50 +1646,58 @@ export default function PerformancePage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-1">
-                {loading ? (
-                  <div className="flex-1 space-y-1.5 rounded-lg border border-purple-500/25 bg-purple-500/10 px-3 py-2.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-purple-200">Uploading song...</span>
-                      <span className="font-semibold text-purple-100">
-                        {uploadProgress}%
-                      </span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full bg-purple-500 transition-all duration-200"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={
-                      !canSubmitPerformance ||
-                      (performanceType === "Other" &&
-                        !otherPerformanceName.trim())
-                    }
-                    className="flex-1 bg-purple-600 hover:bg-purple-700"
-                  >
-                    {editingId ? "Update Performance" : "Register Performance"}
-                  </Button>
-                )}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="submit"
+                  disabled={
+                    loading ||
+                    !canSubmitPerformance ||
+                    (performanceType === "Other" &&
+                      !otherPerformanceName.trim())
+                  }
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 gap-2 relative overflow-hidden group"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {musicFile ? "Uploading…" : "Submitting…"}
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 group-hover:animate-bounce" />
+                      {editingId ? "Update Performance" : "Register Performance"}
+                    </>
+                  )}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
-                    resetForm();
+                    if (loading) {
+                      cancelUpload();
+                    } else {
+                      setShowForm(false);
+                      setEditingId(null);
+                      resetForm();
+                    }
                   }}
-                  disabled={loading}
-                  className="shrink-0"
+                  className={`shrink-0 ${loading ? "border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300" : ""}`}
                 >
-                  Cancel
+                  {loading ? "Cancel Upload" : "Cancel"}
                 </Button>
               </div>
             </form>
+
+            {/* Upload overlay — shown on top of the entire card during upload */}
+            {loading && musicFile && uploadStage !== "idle" && (
+              <UploadProgressOverlay
+                stage={uploadStage}
+                progress={uploadProgress}
+                fileName={musicFile.name}
+                fileSize={musicFile.size}
+                onCancel={cancelUpload}
+              />
+            )}
           </CardContent>
         </Card>
       )}
