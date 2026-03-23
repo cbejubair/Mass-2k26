@@ -29,7 +29,7 @@ export default async function CoordinatorLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <PollPopup />
+      {/* <PollPopup /> */}
       <Sidebar role={session.role} userName={session.name} />
       <main className="pt-14 md:pt-0 md:ml-64 p-4 md:p-6">{children}</main>
     </div>

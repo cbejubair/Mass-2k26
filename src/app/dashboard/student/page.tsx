@@ -207,7 +207,7 @@ export default function StudentDashboard() {
         <p className="text-muted-foreground text-sm mt-1">
           Welcome to MASS 2K26 — track your registration progress below.
         </p>
-        <div className="mt-3">
+        {/* <div className="mt-3">
           <Button
             size="sm"
             variant="outline"
@@ -216,7 +216,7 @@ export default function StudentDashboard() {
           >
             <Disc3 className="h-4 w-4" /> Show DJ Poll
           </Button>
-        </div>
+        </div> */}
       </div>
 
       {/* Stat mini-cards */}

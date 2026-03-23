@@ -91,7 +91,7 @@ export default function CoordinatorDashboard() {
             <Badge variant="secondary">Scope: {classScope.label}</Badge>
           </div>
         )}
-        <div className="mt-3">
+        {/* <div className="mt-3">
           <Button
             size="sm"
             variant="outline"
@@ -100,7 +100,7 @@ export default function CoordinatorDashboard() {
           >
             <Disc3 className="h-4 w-4" /> Show DJ Poll
           </Button>
-        </div>
+        </div> */}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">

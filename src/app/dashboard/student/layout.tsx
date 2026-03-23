@@ -24,7 +24,7 @@ export default async function StudentLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <PollPopup />
+      {/* <PollPopup /> */}
       <Sidebar role="student" userName={session.name} />
       <main className="pt-14 md:pt-0 md:ml-64 p-4 md:p-6">{children}</main>
     </div>

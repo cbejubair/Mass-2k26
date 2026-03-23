@@ -41,6 +41,7 @@ import {
   Play,
   Pause,
   SkipBack,
+  AlertTriangle,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -97,6 +98,14 @@ interface LookupPreviewMissing {
 }
 
 type LookupPreview = LookupPreviewFound | LookupPreviewMissing;
+
+type ToastType = "error" | "warning" | "success";
+
+interface ToastMessage {
+  id: number;
+  type: ToastType;
+  message: string;
+}
 
 const MAX_EVENTS = 3;
 const MAX_AUDIO_SIZE_BYTES = 20 * 1024 * 1024;
@@ -325,7 +334,8 @@ export default function PerformancePage() {
     useState<PaymentEligibility | null>(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -381,6 +391,34 @@ export default function PerformancePage() {
     fetchAll();
   }, []);
 
+  useEffect(() => {
+    if (
+      !eligibilityLoading &&
+      paymentEligibility &&
+      !paymentEligibility.eligible
+    ) {
+      pushToast("error", paymentEligibility.message);
+    }
+    if (
+      !eligibilityLoading &&
+      paymentEligibility &&
+      paymentEligibility.status === "eligible_pending"
+    ) {
+      pushToast(
+        "warning",
+        "Payment verification is pending. You can still register performances.",
+      );
+    }
+  }, [eligibilityLoading, paymentEligibility]);
+
+  const pushToast = (type: ToastType, message: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 4500);
+  };
+
   // ─── Form helpers ────────────────────────────────────────────────────────────
 
   const resetForm = () => {
@@ -395,7 +433,7 @@ export default function PerformancePage() {
     setTeamMembers([]);
     setResolvedMembers([]);
     setLookupPreview(null);
-    setError("");
+    setUploadProgress(0);
   };
 
   const handleNewPerformance = () => {
@@ -425,7 +463,7 @@ export default function PerformancePage() {
     setTeamMembers(members.map((m) => m.register_number));
     setMemberRegNo("");
     setMusicFile(null);
-    setError("");
+    setUploadProgress(0);
     setSuccess(false);
     setSuccessMessage("");
     setShowForm(true);
@@ -436,12 +474,11 @@ export default function PerformancePage() {
     const regNo = memberRegNo.trim().toUpperCase();
     if (!regNo) return;
     if (teamMembers.includes(regNo)) {
-      setError("This student is already added to the team.");
+      pushToast("warning", "This student is already added to the team.");
       return;
     }
     setLookupLoading(true);
     setLookupPreview(null);
-    setError("");
     try {
       const res = await fetch(
         `/api/register/lookup?regNo=${encodeURIComponent(regNo)}`,
@@ -459,8 +496,12 @@ export default function PerformancePage() {
       }
       // User not found — show error preview, do NOT add
       setLookupPreview({ found: false, regNo });
+      pushToast(
+        "warning",
+        "User not found. Only registered users can be added.",
+      );
     } catch {
-      setError("Failed to lookup student. Please try again.");
+      pushToast("error", "Failed to lookup student. Please try again.");
     } finally {
       setLookupLoading(false);
     }
@@ -498,28 +539,37 @@ export default function PerformancePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId && totalEvents >= MAX_EVENTS) {
-      setError(`You have reached the maximum of ${MAX_EVENTS} events.`);
+      pushToast(
+        "warning",
+        `You have reached the maximum of ${MAX_EVENTS} events.`,
+      );
       return;
     }
 
     if (musicFile) {
       if (!musicFile.type?.startsWith("audio/")) {
-        setError("Only audio files are allowed for music track upload.");
+        pushToast(
+          "error",
+          "Only audio files are allowed for music track upload.",
+        );
         return;
       }
       if (musicFile.size > MAX_AUDIO_SIZE_BYTES) {
-        setError("Music file must be less than 20MB.");
+        pushToast("error", "Music file must be less than 20MB.");
         return;
       }
     }
 
     if (performanceType === "Other" && !otherPerformanceName.trim()) {
-      setError("Please enter the performance name for Other category.");
+      pushToast(
+        "warning",
+        "Please enter the performance name for Other category.",
+      );
       return;
     }
 
     setLoading(true);
-    setError("");
+    setUploadProgress(0);
     setSuccess(false);
     setSuccessMessage("");
     try {
@@ -541,20 +591,55 @@ export default function PerformancePage() {
       };
 
       const submitOnce = async () => {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-        try {
-          return await fetch("/api/performances/submit", {
-            method: editingId ? "PUT" : "POST",
-            body: createPayload(),
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeout);
-        }
+        return new Promise<{ ok: boolean; status: number; data: any }>(
+          (resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open(editingId ? "PUT" : "POST", "/api/performances/submit");
+            xhr.responseType = "json";
+            xhr.timeout = UPLOAD_TIMEOUT_MS;
+
+            xhr.upload.onprogress = (event) => {
+              if (!event.lengthComputable || event.total <= 0) return;
+              const percent = Math.min(
+                100,
+                Math.round((event.loaded / event.total) * 100),
+              );
+              setUploadProgress(percent);
+            };
+
+            xhr.onload = () => {
+              let responseData = xhr.response;
+              if (!responseData) {
+                try {
+                  responseData = xhr.responseText
+                    ? JSON.parse(xhr.responseText)
+                    : {};
+                } catch {
+                  responseData = {};
+                }
+              }
+              setUploadProgress(100);
+              resolve({
+                ok: xhr.status >= 200 && xhr.status < 300,
+                status: xhr.status,
+                data: responseData,
+              });
+            };
+
+            xhr.onerror = () => {
+              reject(new TypeError("Network request failed"));
+            };
+
+            xhr.ontimeout = () => {
+              reject(new DOMException("Request timed out", "AbortError"));
+            };
+
+            xhr.send(createPayload());
+          },
+        );
       };
 
-      let res: Response;
+      let res: { ok: boolean; status: number; data: any };
       try {
         res = await submitOnce();
       } catch (firstErr) {
@@ -569,9 +654,9 @@ export default function PerformancePage() {
         }
       }
 
-      const data = await res.json();
+      const data = res.data || {};
       if (!res.ok) {
-        setError(data.error);
+        pushToast("error", data.error || "Failed to submit performance.");
         return;
       }
       setSuccess(true);
@@ -585,12 +670,15 @@ export default function PerformancePage() {
       await fetchAll();
       setShowForm(false);
     } catch (err) {
+      setUploadProgress(0);
       if (err instanceof DOMException && err.name === "AbortError") {
-        setError(
+        pushToast(
+          "error",
           "Upload timed out. Check your connection and try a smaller/compressed audio file.",
         );
       } else {
-        setError(
+        pushToast(
+          "error",
           "Upload failed due to a network issue. Please retry with stable internet.",
         );
       }
@@ -614,6 +702,32 @@ export default function PerformancePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {toasts.length > 0 && (
+        <div className="fixed top-4 right-4 z-[100] space-y-2 w-[min(92vw,360px)]">
+          {toasts.map((toast) => {
+            const isError = toast.type === "error";
+            const isWarning = toast.type === "warning";
+            return (
+              <div
+                key={toast.id}
+                className={`rounded-lg border px-3 py-2.5 shadow-lg backdrop-blur-sm text-sm ${
+                  isError
+                    ? "border-red-500/30 bg-red-500/15 text-red-200"
+                    : isWarning
+                      ? "border-amber-500/30 bg-amber-500/15 text-amber-100"
+                      : "border-emerald-500/30 bg-emerald-500/15 text-emerald-100"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <p>{toast.message}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -783,13 +897,6 @@ export default function PerformancePage() {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-red-400">
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  {error}
-                </div>
-              )}
-
               {!canSubmitPerformance && (
                 <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -895,7 +1002,6 @@ export default function PerformancePage() {
                       onChange={(e) => {
                         setMemberRegNo(e.target.value);
                         setLookupPreview(null);
-                        setError("");
                       }}
                       placeholder="Register number…"
                       className="bg-background/60"
@@ -1102,7 +1208,35 @@ export default function PerformancePage() {
                   <input
                     type="file"
                     accept="audio/*"
-                    onChange={(e) => setMusicFile(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const selectedFile = e.target.files?.[0] || null;
+                      if (!selectedFile) {
+                        setMusicFile(null);
+                        return;
+                      }
+
+                      if (!selectedFile.type?.startsWith("audio/")) {
+                        pushToast(
+                          "error",
+                          "Only audio files are allowed for music track upload.",
+                        );
+                        e.currentTarget.value = "";
+                        setMusicFile(null);
+                        return;
+                      }
+
+                      if (selectedFile.size > MAX_AUDIO_SIZE_BYTES) {
+                        pushToast(
+                          "error",
+                          "Music file must be less than 20MB.",
+                        );
+                        e.currentTarget.value = "";
+                        setMusicFile(null);
+                        return;
+                      }
+
+                      setMusicFile(selectedFile);
+                    }}
                     className="hidden"
                     id="musicFile"
                   />
@@ -1139,6 +1273,11 @@ export default function PerformancePage() {
                     </>
                   )}
                 </label>
+                <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-200">
+                  <p className="font-semibold mb-1">Music rules</p>
+                  <p>Song duration must be less than 5 minutes.</p>
+                  <p>Repeated songs are not allowed.</p>
+                </div>
                 {editingId && (
                   <p className="text-xs text-muted-foreground">
                     Leave empty to keep the existing track.
@@ -1148,27 +1287,34 @@ export default function PerformancePage() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-1">
-                <Button
-                  type="submit"
-                  disabled={
-                    loading ||
-                    !canSubmitPerformance ||
-                    (performanceType === "Other" &&
-                      !otherPerformanceName.trim())
-                  }
-                  className="flex-1 bg-purple-600 hover:bg-purple-700"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Submitting…
-                    </>
-                  ) : editingId ? (
-                    "Update Performance"
-                  ) : (
-                    "Register Performance"
-                  )}
-                </Button>
+                {loading ? (
+                  <div className="flex-1 space-y-1.5 rounded-lg border border-purple-500/25 bg-purple-500/10 px-3 py-2.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-purple-200">Uploading song...</span>
+                      <span className="font-semibold text-purple-100">
+                        {uploadProgress}%
+                      </span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-purple-500 transition-all duration-200"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={
+                      !canSubmitPerformance ||
+                      (performanceType === "Other" &&
+                        !otherPerformanceName.trim())
+                    }
+                    className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  >
+                    {editingId ? "Update Performance" : "Register Performance"}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -1177,6 +1323,7 @@ export default function PerformancePage() {
                     setEditingId(null);
                     resetForm();
                   }}
+                  disabled={loading}
                   className="shrink-0"
                 >
                   Cancel
