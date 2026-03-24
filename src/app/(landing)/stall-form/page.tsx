@@ -383,6 +383,15 @@ export default function StallFormPage() {
                     <p>
                       The management and the Fine Arts Club Student Committee are not responsible for any loss or damage to the equipment brought by stall holders.
                     </p>
+                    <p>
+                      Stall amount to be paid is Rs. 8000.
+                    </p>
+                    <p>
+                      If multiple members share one stall, the amount can be shared among the team members.
+                    </p>
+                    <p>
+                      Once paid, the stall amount is non-refundable.
+                    </p>
                     <label className="flex items-start gap-2 pt-1 cursor-pointer">
                       <input
                         type="checkbox"

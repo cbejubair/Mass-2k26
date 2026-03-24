@@ -481,9 +481,7 @@ export async function GET() {
     if (session.role === "admin") {
       const { data } = await supabaseAdmin
         .from("performance_registrations")
-        .select(
-          "*, users(name, register_number, department, year, class_section)",
-        );
+        .select("*, users(name, register_number, department, year, class_section, mobile_number)");
 
       return NextResponse.json({ performances: data || [] });
     }
@@ -516,15 +514,11 @@ export async function GET() {
       const [ownedRes, teamRes] = await Promise.all([
         supabaseAdmin
           .from("performance_registrations")
-          .select(
-            "*, users(name, register_number, department, year, class_section)",
-          )
+          .select("*, users(name, register_number, department, year, class_section, mobile_number)")
           .in("user_id", scopedUserIds),
         supabaseAdmin
           .from("performance_registrations")
-          .select(
-            "*, users(name, register_number, department, year, class_section)",
-          )
+          .select("*, users(name, register_number, department, year, class_section, mobile_number)")
           .eq("is_team", true),
       ]);
 
