@@ -53,18 +53,62 @@ export async function GET() {
       });
     }
 
-    const { data: payments, error: paymentsError } = await supabaseAdmin
+    const isMissingColumnError = (message?: string) =>
+      Boolean(
+        message &&
+        /column/i.test(message) &&
+        /(does not exist|not found)/i.test(message),
+      );
+
+    const primaryColumns =
+      "id, user_id, amount, screenshot_url, payment_status, payment_mode, transaction_ref, verified_by, verified_at, created_at";
+    const legacyColumnsWithCreatedAt =
+      "id, user_id, amount, screenshot_url, payment_status, verified_by, verified_at, created_at";
+    const legacyColumns =
+      "id, user_id, amount, screenshot_url, payment_status, verified_by, verified_at";
+
+    let payments: any[] | null = null;
+    let paymentsError: { message?: string } | null = null;
+
+    const primaryResult = await supabaseAdmin
       .from("payments")
-      .select(
-        "id, user_id, amount, screenshot_url, payment_status, payment_mode, transaction_ref, verified_by, verified_at",
-      )
+      .select(primaryColumns)
       .in("user_id", studentIds)
-      .order("verified_at", { ascending: false });
+      .order("created_at", { ascending: false, nullsFirst: false });
+
+    payments = primaryResult.data;
+    paymentsError = primaryResult.error;
+
+    if (paymentsError && isMissingColumnError(paymentsError.message)) {
+      const fallbackWithCreatedAt = await supabaseAdmin
+        .from("payments")
+        .select(legacyColumnsWithCreatedAt)
+        .in("user_id", studentIds)
+        .order("created_at", { ascending: false, nullsFirst: false });
+
+      payments = fallbackWithCreatedAt.data;
+      paymentsError = fallbackWithCreatedAt.error;
+
+      if (paymentsError && isMissingColumnError(paymentsError.message)) {
+        const fallback = await supabaseAdmin
+          .from("payments")
+          .select(legacyColumns)
+          .in("user_id", studentIds)
+          .order("verified_at", { ascending: false });
+
+        payments = fallback.data;
+        paymentsError = fallback.error;
+      }
+    }
 
     if (paymentsError) {
       console.error(
         "Coordinator payments - payments query error:",
         paymentsError,
+      );
+      return NextResponse.json(
+        { error: "Failed to fetch payments" },
+        { status: 500 },
       );
     }
 
@@ -91,6 +135,8 @@ export async function GET() {
 
     const mapped = items.map((p) => ({
       ...p,
+      payment_mode: p.payment_mode ?? null,
+      transaction_ref: p.transaction_ref ?? null,
       users: payerMap.get(p.user_id)
         ? {
             name: payerMap.get(p.user_id)!.name,

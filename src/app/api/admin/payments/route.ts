@@ -6,16 +6,57 @@ export async function GET() {
   try {
     await requireAuth(["admin"]);
 
-    const { data: payments, error: paymentsError } = await supabaseAdmin
+    const isMissingColumnError = (message?: string) =>
+      Boolean(
+        message &&
+        /column/i.test(message) &&
+        /(does not exist|not found)/i.test(message),
+      );
+
+    const primaryColumns =
+      "id, user_id, amount, screenshot_url, payment_status, payment_mode, transaction_ref, verified_by, verified_at, created_at, users:users!payments_user_id_fkey(name, register_number, department, year, class_section), verifier:users!payments_verified_by_fkey(name)";
+    const legacyColumnsWithCreatedAt =
+      "id, user_id, amount, screenshot_url, payment_status, verified_by, verified_at, created_at, users:users!payments_user_id_fkey(name, register_number, department, year, class_section), verifier:users!payments_verified_by_fkey(name)";
+    const legacyColumns =
+      "id, user_id, amount, screenshot_url, payment_status, verified_by, verified_at, users:users!payments_user_id_fkey(name, register_number, department, year, class_section), verifier:users!payments_verified_by_fkey(name)";
+
+    let payments: any[] | null = null;
+    let paymentsError: { message?: string } | null = null;
+
+    const primaryResult = await supabaseAdmin
       .from("payments")
-      .select(
-        "id, user_id, amount, screenshot_url, payment_status, payment_mode, transaction_ref, verified_by, verified_at",
-      )
-      .order("verified_at", { ascending: false });
+      .select(primaryColumns)
+      .order("created_at", { ascending: false, nullsFirst: false });
+
+    payments = primaryResult.data;
+    paymentsError = primaryResult.error;
+
+    if (paymentsError && isMissingColumnError(paymentsError.message)) {
+      const fallbackWithCreatedAt = await supabaseAdmin
+        .from("payments")
+        .select(legacyColumnsWithCreatedAt)
+        .order("created_at", { ascending: false, nullsFirst: false });
+
+      payments = fallbackWithCreatedAt.data;
+      paymentsError = fallbackWithCreatedAt.error;
+
+      if (paymentsError && isMissingColumnError(paymentsError.message)) {
+        const fallback = await supabaseAdmin
+          .from("payments")
+          .select(legacyColumns)
+          .order("verified_at", { ascending: false });
+
+        payments = fallback.data;
+        paymentsError = fallback.error;
+      }
+    }
 
     if (paymentsError) {
       console.error("Admin payments query error:", paymentsError);
-      return NextResponse.json({ payments: [] });
+      return NextResponse.json(
+        { error: "Failed to fetch payments" },
+        { status: 500 },
+      );
     }
 
     const items = payments || [];
@@ -23,35 +64,17 @@ export async function GET() {
       return NextResponse.json({ payments: [] });
     }
 
-    const userIds = Array.from(
-      new Set(items.map((p) => p.user_id).filter(Boolean)),
-    );
-    const verifierIds = Array.from(
-      new Set(items.map((p) => p.verified_by).filter(Boolean)),
-    ) as string[];
-
-    const [{ data: payers }, { data: verifiers }] = await Promise.all([
-      supabaseAdmin
-        .from("users")
-        .select("id, name, register_number, department, year, class_section")
-        .in("id", userIds),
-      verifierIds.length > 0
-        ? supabaseAdmin.from("users").select("id, name").in("id", verifierIds)
-        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    ]);
-
-    const payerMap = new Map((payers || []).map((u) => [u.id, u]));
-    const verifierMap = new Map((verifiers || []).map((u) => [u.id, u]));
-
     const mapped = items.map((p) => ({
       ...p,
-      users: payerMap.get(p.user_id)
+      payment_mode: p.payment_mode ?? null,
+      transaction_ref: p.transaction_ref ?? null,
+      users: p.users
         ? {
-            name: payerMap.get(p.user_id)!.name,
-            register_number: payerMap.get(p.user_id)!.register_number,
-            department: payerMap.get(p.user_id)!.department,
-            year: payerMap.get(p.user_id)!.year,
-            class_section: payerMap.get(p.user_id)!.class_section,
+            name: p.users.name || "-",
+            register_number: p.users.register_number || "-",
+            department: p.users.department || "-",
+            year: p.users.year || "-",
+            class_section: p.users.class_section || "-",
           }
         : {
             name: "-",
@@ -60,9 +83,7 @@ export async function GET() {
             year: "-",
             class_section: "-",
           },
-      verifier: p.verified_by
-        ? { name: verifierMap.get(p.verified_by)?.name || "-" }
-        : null,
+      verifier: p.verifier?.name ? { name: p.verifier.name } : null,
     }));
 
     return NextResponse.json({ payments: mapped });

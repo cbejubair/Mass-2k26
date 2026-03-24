@@ -39,13 +39,14 @@ interface PaymentItem {
     department: string;
     year: string;
     class_section: string;
-  };
+  } | null;
   verifier: { name: string } | null;
 }
 
 export default function AdminPaymentsPage() {
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -61,10 +62,23 @@ export default function AdminPaymentsPage() {
   const fetchPayments = async () => {
     try {
       const res = await fetch("/api/admin/payments");
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.error || "Failed to load payments");
+      }
+
       const data = await res.json();
+      if (!Array.isArray(data.payments)) {
+        throw new Error("Invalid payments response");
+      }
+
       setPayments(data.payments || []);
-    } catch {
-      console.error("Failed to fetch");
+      setLoadError(null);
+    } catch (error) {
+      setPayments([]);
+      setLoadError(
+        error instanceof Error ? error.message : "Failed to load payments",
+      );
     } finally {
       setLoading(false);
     }
@@ -184,6 +198,11 @@ export default function AdminPaymentsPage() {
       return bTime - aTime;
     });
 
+  const renderText = (value?: string | null) => {
+    const normalized = value?.trim();
+    return normalized ? normalized : "—";
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -194,6 +213,14 @@ export default function AdminPaymentsPage() {
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardContent className="p-4 text-sm text-destructive">
+            {loadError}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Payment Management</h1>
@@ -309,12 +336,17 @@ export default function AdminPaymentsPage() {
             {filtered.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-mono text-sm">
-                  {p.users?.register_number}
+                  {renderText(p.users?.register_number)}
                 </TableCell>
-                <TableCell>{p.users?.name}</TableCell>
-                <TableCell>{p.users?.department}</TableCell>
+                <TableCell>{renderText(p.users?.name)}</TableCell>
+                <TableCell>{renderText(p.users?.department)}</TableCell>
                 <TableCell>
-                  {p.users?.year} {p.users?.class_section}
+                  {renderText(
+                    [p.users?.year, p.users?.class_section]
+                      .map((value) => value?.trim())
+                      .filter(Boolean)
+                      .join(" / "),
+                  )}
                 </TableCell>
                 <TableCell className="font-semibold">₹{p.amount}</TableCell>
                 <TableCell>
@@ -386,7 +418,7 @@ export default function AdminPaymentsPage() {
                   {p.payment_status !== "pending" && p.verifier?.name ? (
                     <>
                       <span className="font-medium text-foreground">
-                        {p.verifier.name}
+                        {renderText(p.verifier.name)}
                       </span>
                       {p.verified_at && (
                         <>
