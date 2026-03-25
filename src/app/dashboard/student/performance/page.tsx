@@ -27,7 +27,6 @@ import {
   Loader2,
   CheckCircle2,
   Music,
-  Plus,
   X,
   UserPlus,
   ExternalLink,
@@ -37,7 +36,6 @@ import {
   Mic2,
   AlertCircle,
   Crown,
-  Lock,
   Play,
   Pause,
   SkipBack,
@@ -712,8 +710,6 @@ export default function PerformancePage() {
 
   const totalEvents = performances.length + teamPerformances.length;
   const canSubmitPerformance = paymentEligibility?.eligible ?? false;
-  const canAddMore =
-    totalEvents < MAX_EVENTS && !editingId && canSubmitPerformance;
   const canShowWhatsappLink = totalEvents > 0;
 
   // ─── Fetch ──────────────────────────────────────────────────────────────────
@@ -808,14 +804,6 @@ export default function PerformancePage() {
     setUploadProgress(0);
     setUploadStage("idle");
     pushToast("warning", "Upload cancelled.");
-  };
-
-  const handleNewPerformance = () => {
-    setEditingId(null);
-    setSuccess(false);
-    setSuccessMessage("");
-    resetForm();
-    setShowForm(true);
   };
 
   const handleEditPerformance = (p: StudentPerformance) => {
@@ -1240,52 +1228,31 @@ export default function PerformancePage() {
             Performance Registration
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Register &amp; manage your performances for MASS 2K26
+            View &amp; update your performances for MASS 2K26
           </p>
         </div>
 
         <div className="flex flex-col sm:items-end gap-2">
-          {/* <EventSlotBar used={totalEvents} max={MAX_EVENTS} /> */}
-          <Button
-            type="button"
-            onClick={handleNewPerformance}
-            disabled={eligibilityLoading || !canAddMore || showForm}
-            className="w-full sm:w-auto gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-40"
-          >
-            {!canSubmitPerformance ? (
-              <>
-                <Lock className="h-4 w-4" /> Payment Required
-              </>
-            ) : totalEvents >= MAX_EVENTS && !editingId ? (
-              <>
-                <Lock className="h-4 w-4" /> Limit Reached
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" /> New Performance
-              </>
-            )}
-          </Button>
+          <p className="text-xs text-muted-foreground sm:text-right">
+            Use the <span className="font-medium text-foreground">Update</span>{" "}
+            button under My Performances to edit existing entries.
+          </p>
         </div>
       </div>
 
-      {/* ── Limit banner ── */}
-      {totalEvents >= MAX_EVENTS && (
-        <div className="relative overflow-hidden flex items-start gap-3 rounded-xl border border-red-500/25 bg-gradient-to-r from-red-500/10 to-red-500/5 px-4 py-3.5 text-sm text-red-300">
-          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500 rounded-l-xl" />
-          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
-          <div>
-            <p className="font-semibold text-red-300 mb-0.5">
-              {MAX_EVENTS}-event limit reached
-            </p>
-            <p className="text-xs text-red-400/80">
-              You cannot add new performances. Use the{" "}
-              <span className="font-semibold text-red-300">Update</span> button
-              to modify existing ones.
-            </p>
-          </div>
+      {/* ── Registration closed banner ── */}
+      <div className="relative overflow-hidden flex items-start gap-3 rounded-xl border border-red-500/25 bg-gradient-to-r from-red-500/10 to-red-500/5 px-4 py-3.5 text-sm text-red-300">
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500 rounded-l-xl" />
+        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
+        <div>
+          <p className="font-semibold text-red-300 mb-0.5">
+            Registration has been closed
+          </p>
+          <p className="text-xs text-red-400/80">
+            New performance registrations are no longer accepted.
+          </p>
         </div>
-      )}
+      </div>
 
       {/* ── Payment eligibility banner ── */}
       {!eligibilityLoading &&
@@ -1372,29 +1339,17 @@ export default function PerformancePage() {
       )}
 
       {/* ── Registration Form ── */}
-      {showForm && (
+      {showForm && editingId && (
         <Card className="border-white/10 bg-card/50 backdrop-blur-sm shadow-xl relative overflow-hidden">
           <CardHeader className="pb-4 border-b border-white/5">
             <div className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${editingId ? "bg-amber-500/15 border border-amber-500/25" : "bg-purple-500/15 border border-purple-500/25"}`}
-              >
-                {editingId ? (
-                  <Pencil className="h-4 w-4 text-amber-400" />
-                ) : (
-                  <Plus className="h-4 w-4 text-purple-400" />
-                )}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/15 border border-amber-500/25">
+                <Pencil className="h-4 w-4 text-amber-400" />
               </div>
               <div>
-                <CardTitle className="text-base">
-                  {editingId
-                    ? "Update Performance"
-                    : "Register New Performance"}
-                </CardTitle>
+                <CardTitle className="text-base">Update Performance</CardTitle>
                 <CardDescription className="text-xs mt-0.5">
-                  {editingId
-                    ? "Changes will reset approval status to pending."
-                    : `Slot ${performances.length + 1} of ${MAX_EVENTS} available.`}
+                  Changes will reset approval status to pending.
                 </CardDescription>
               </div>
             </div>
@@ -1876,9 +1831,7 @@ export default function PerformancePage() {
                   ) : (
                     <>
                       <Upload className="h-4 w-4 group-hover:animate-bounce" />
-                      {editingId
-                        ? "Update Performance"
-                        : "Register Performance"}
+                      Update Performance
                     </>
                   )}
                 </Button>
@@ -2194,17 +2147,9 @@ export default function PerformancePage() {
               <div>
                 <p className="font-semibold text-base">No performances yet</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Register your first performance — you can add up to{" "}
-                  {MAX_EVENTS} events.
+                  No performances found to update right now.
                 </p>
               </div>
-              <Button
-                onClick={handleNewPerformance}
-                className="mt-2 bg-purple-600 hover:bg-purple-700 gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Register Performance
-              </Button>
             </CardContent>
           </Card>
         )}
