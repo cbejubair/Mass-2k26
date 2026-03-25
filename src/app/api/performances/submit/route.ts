@@ -126,6 +126,33 @@ async function uploadMusicIfProvided(
   return urlData.publicUrl;
 }
 
+function getPublicMusicUrl(filePath: string) {
+  const { data: urlData } = supabaseAdmin.storage
+    .from("mass")
+    .getPublicUrl(filePath);
+  return urlData.publicUrl;
+}
+
+function getValidatedPreUploadedMusicUrl(
+  musicFilePathRaw: string,
+  registerNumber: string,
+) {
+  const musicFilePath = musicFilePathRaw?.trim();
+  if (!musicFilePath) return null;
+
+  const normalizedRegister = registerNumber?.trim();
+  if (!normalizedRegister) {
+    throw new Error("Invalid upload path");
+  }
+
+  const allowedPrefix = `music/${normalizedRegister}/`;
+  if (!musicFilePath.startsWith(allowedPrefix)) {
+    throw new Error("Invalid uploaded music file reference");
+  }
+
+  return getPublicMusicUrl(musicFilePath);
+}
+
 async function findIneligibleTeamMembers(memberRegNos: string[]) {
   if (memberRegNos.length === 0) return [] as string[];
 
@@ -180,6 +207,8 @@ export async function POST(req: NextRequest) {
     const leaderName = formData.get("leaderName") as string;
     const specialRequirements = formData.get("specialRequirements") as string;
     const musicFile = formData.get("musicFile") as File | null;
+    const musicFilePath = (formData.get("musicFilePath") as string) || "";
+    const removeMusic = formData.get("removeMusic") === "true";
     const isTeam = formData.get("isTeam") === "true";
     const teamMembersRaw = formData.get("teamMembers") as string;
 
@@ -275,11 +304,18 @@ export async function POST(req: NextRequest) {
 
     let musicFileUrl: string | null = null;
     try {
-      musicFileUrl = await uploadMusicIfProvided(
-        musicFile,
-        registerRef,
-        "track",
-      );
+      if (musicFilePath) {
+        musicFileUrl = getValidatedPreUploadedMusicUrl(
+          musicFilePath,
+          registerRef,
+        );
+      } else {
+        musicFileUrl = await uploadMusicIfProvided(
+          musicFile,
+          registerRef,
+          "track",
+        );
+      }
     } catch (uploadErr) {
       const message =
         uploadErr instanceof Error
@@ -333,6 +369,8 @@ export async function PUT(req: NextRequest) {
     const leaderName = formData.get("leaderName") as string;
     const specialRequirements = formData.get("specialRequirements") as string;
     const musicFile = formData.get("musicFile") as File | null;
+    const musicFilePath = (formData.get("musicFilePath") as string) || "";
+    const removeMusic = formData.get("removeMusic") === "true";
     const isTeam = formData.get("isTeam") === "true";
     const teamMembersRaw = formData.get("teamMembers") as string;
 
@@ -416,14 +454,23 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    let musicFileUrl: string | null = existing.music_file_url;
+    let musicFileUrl: string | null = removeMusic
+      ? null
+      : existing.music_file_url;
     try {
-      const uploadedMusicUrl = await uploadMusicIfProvided(
-        musicFile,
-        registerRef,
-        `track-${performanceId}`,
-      );
-      if (uploadedMusicUrl) musicFileUrl = uploadedMusicUrl;
+      if (musicFilePath) {
+        musicFileUrl = getValidatedPreUploadedMusicUrl(
+          musicFilePath,
+          registerRef,
+        );
+      } else {
+        const uploadedMusicUrl = await uploadMusicIfProvided(
+          musicFile,
+          registerRef,
+          `track-${performanceId}`,
+        );
+        if (uploadedMusicUrl) musicFileUrl = uploadedMusicUrl;
+      }
     } catch (uploadErr) {
       const message =
         uploadErr instanceof Error
@@ -481,7 +528,9 @@ export async function GET() {
     if (session.role === "admin") {
       const { data } = await supabaseAdmin
         .from("performance_registrations")
-        .select("*, users(name, register_number, department, year, class_section, mobile_number)");
+        .select(
+          "*, users(name, register_number, department, year, class_section, mobile_number)",
+        );
 
       return NextResponse.json({ performances: data || [] });
     }
@@ -514,11 +563,15 @@ export async function GET() {
       const [ownedRes, teamRes] = await Promise.all([
         supabaseAdmin
           .from("performance_registrations")
-          .select("*, users(name, register_number, department, year, class_section, mobile_number)")
+          .select(
+            "*, users(name, register_number, department, year, class_section, mobile_number)",
+          )
           .in("user_id", scopedUserIds),
         supabaseAdmin
           .from("performance_registrations")
-          .select("*, users(name, register_number, department, year, class_section, mobile_number)")
+          .select(
+            "*, users(name, register_number, department, year, class_section, mobile_number)",
+          )
           .eq("is_team", true),
       ]);
 
