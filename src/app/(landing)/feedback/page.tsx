@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -55,7 +55,9 @@ const DEPT_MAP: Record<string, string> = {
   "114": "MECH",
 };
 
-function deriveFromRegNumber(regNum: string): { year: string; department: string } | null {
+function deriveFromRegNumber(
+  regNum: string,
+): { year: string; department: string } | null {
   if (regNum.length !== 12 || !regNum.startsWith("7125")) return null;
   const year = YEAR_MAP[regNum.slice(4, 6)];
   const department = DEPT_MAP[regNum.slice(6, 9)];
@@ -63,45 +65,87 @@ function deriveFromRegNumber(regNum: string): { year: string; department: string
   return { year, department };
 }
 
-const SECTION_ORDER = Array.from(new Set(FEEDBACK_TABLE_SCHEMA.map((r) => r.section)));
+const SECTION_ORDER = Array.from(
+  new Set(FEEDBACK_TABLE_SCHEMA.map((r) => r.section)),
+);
 
 type OptionTone = "high" | "midHigh" | "mid" | "low" | "neutral";
 
 function getOptionTone(value: string): OptionTone {
-  if (new Set(["excellent", "fully_met", "on_time", "worth_it", "perfect", "yes"]).has(value)) return "high";
-  if (new Set(["good", "partially_met", "slight_delays", "maybe"]).has(value)) return "midHigh";
-  if (new Set(["average", "neutral", "too_short", "too_long", "not_used"]).has(value)) return "mid";
-  if (new Set(["poor", "very_poor", "not_met", "major_delays", "no_schedule", "not_worth", "no"]).has(value)) return "low";
+  if (
+    new Set([
+      "excellent",
+      "fully_met",
+      "on_time",
+      "worth_it",
+      "perfect",
+      "yes",
+    ]).has(value)
+  )
+    return "high";
+  if (new Set(["good", "partially_met", "slight_delays", "maybe"]).has(value))
+    return "midHigh";
+  if (
+    new Set(["average", "neutral", "too_short", "too_long", "not_used"]).has(
+      value,
+    )
+  )
+    return "mid";
+  if (
+    new Set([
+      "poor",
+      "very_poor",
+      "not_met",
+      "major_delays",
+      "no_schedule",
+      "not_worth",
+      "no",
+    ]).has(value)
+  )
+    return "low";
   return "neutral";
 }
 
 function optionToneClasses(tone: OptionTone, active: boolean): string {
   const map: Record<OptionTone, { active: string; inactive: string }> = {
     high: {
-      active: "border-emerald-500/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30",
-      inactive: "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300/80 hover:bg-emerald-500/[0.12] hover:border-emerald-400/40",
+      active:
+        "border-emerald-500/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.15)] ring-1 ring-emerald-400/30",
+      inactive:
+        "border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300/80 hover:bg-emerald-500/[0.12] hover:border-emerald-400/40",
     },
     midHigh: {
-      active: "border-sky-500/60 bg-sky-500/20 text-sky-200 shadow-[0_0_12px_rgba(14,165,233,0.15)] ring-1 ring-sky-400/30",
-      inactive: "border-sky-500/20 bg-sky-500/[0.06] text-sky-300/80 hover:bg-sky-500/[0.12] hover:border-sky-400/40",
+      active:
+        "border-sky-500/60 bg-sky-500/20 text-sky-200 shadow-[0_0_12px_rgba(14,165,233,0.15)] ring-1 ring-sky-400/30",
+      inactive:
+        "border-sky-500/20 bg-sky-500/[0.06] text-sky-300/80 hover:bg-sky-500/[0.12] hover:border-sky-400/40",
     },
     mid: {
-      active: "border-amber-500/60 bg-amber-500/20 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.15)] ring-1 ring-amber-400/30",
-      inactive: "border-amber-500/20 bg-amber-500/[0.06] text-amber-300/80 hover:bg-amber-500/[0.12] hover:border-amber-400/40",
+      active:
+        "border-amber-500/60 bg-amber-500/20 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.15)] ring-1 ring-amber-400/30",
+      inactive:
+        "border-amber-500/20 bg-amber-500/[0.06] text-amber-300/80 hover:bg-amber-500/[0.12] hover:border-amber-400/40",
     },
     low: {
-      active: "border-rose-500/60 bg-rose-500/20 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.15)] ring-1 ring-rose-400/30",
-      inactive: "border-rose-500/20 bg-rose-500/[0.06] text-rose-300/80 hover:bg-rose-500/[0.12] hover:border-rose-400/40",
+      active:
+        "border-rose-500/60 bg-rose-500/20 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.15)] ring-1 ring-rose-400/30",
+      inactive:
+        "border-rose-500/20 bg-rose-500/[0.06] text-rose-300/80 hover:bg-rose-500/[0.12] hover:border-rose-400/40",
     },
     neutral: {
-      active: "border-fuchsia-500/60 bg-fuchsia-500/20 text-fuchsia-200 shadow-[0_0_12px_rgba(217,70,239,0.15)] ring-1 ring-fuchsia-400/30",
-      inactive: "border-white/[0.08] bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08] hover:border-fuchsia-400/30",
+      active:
+        "border-fuchsia-500/60 bg-fuchsia-500/20 text-fuchsia-200 shadow-[0_0_12px_rgba(217,70,239,0.15)] ring-1 ring-fuchsia-400/30",
+      inactive:
+        "border-white/[0.08] bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08] hover:border-fuchsia-400/30",
     },
   };
   return active ? map[tone].active : map[tone].inactive;
 }
 
-function isFieldMissing(form: FeedbackFormData, row: FeedbackSchemaRow): boolean {
+function isFieldMissing(
+  form: FeedbackFormData,
+  row: FeedbackSchemaRow,
+): boolean {
   if (!row.required) return false;
   if (row.type === "multi") return form[row.field].length === 0;
   const value = form[row.field];
@@ -111,12 +155,21 @@ function isFieldMissing(form: FeedbackFormData, row: FeedbackSchemaRow): boolean
 function scrollToField(fieldId: string) {
   const el = document.getElementById(`field-${fieldId}`);
   if (!el) return;
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 100, behavior: "smooth" });
+  window.scrollTo({
+    top: el.getBoundingClientRect().top + window.scrollY - 100,
+    behavior: "smooth",
+  });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────
 
-function OptionGrid({ field, options, value, onChange, highlighted }: {
+function OptionGrid({
+  field,
+  options,
+  value,
+  onChange,
+  highlighted,
+}: {
   field: string;
   options: readonly FeedbackOption[];
   value: string;
@@ -124,7 +177,9 @@ function OptionGrid({ field, options, value, onChange, highlighted }: {
   highlighted: boolean;
 }) {
   return (
-    <div className={`grid gap-2 sm:grid-cols-2 rounded-xl transition-all duration-500 ${highlighted ? "ring-2 ring-red-500/50 ring-offset-2 ring-offset-transparent p-1" : ""}`}>
+    <div
+      className={`grid gap-2 sm:grid-cols-2 rounded-xl transition-all duration-500 ${highlighted ? "ring-2 ring-red-500/50 ring-offset-2 ring-offset-transparent p-1" : ""}`}
+    >
       {options.map((opt) => {
         const active = value === opt.value;
         const tone = getOptionTone(opt.value);
@@ -143,7 +198,15 @@ function OptionGrid({ field, options, value, onChange, highlighted }: {
   );
 }
 
-function ValidationToast({ message, fieldId, onDismiss }: { message: string; fieldId: string; onDismiss: () => void }) {
+function ValidationToast({
+  message,
+  fieldId,
+  onDismiss,
+}: {
+  message: string;
+  fieldId: string;
+  onDismiss: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -20, scale: 0.96 }}
@@ -158,15 +221,29 @@ function ValidationToast({ message, fieldId, onDismiss }: { message: string; fie
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
         </span>
         <div className="flex flex-col gap-0.5">
-          <p className="text-[13px] font-medium text-white">Required field missing</p>
-          <p className="max-w-[260px] truncate text-xs text-neutral-400">{message}</p>
+          <p className="text-[13px] font-medium text-white">
+            Required field missing
+          </p>
+          <p className="max-w-[260px] truncate text-xs text-neutral-400">
+            {message}
+          </p>
         </div>
-        <button type="button" onClick={() => { scrollToField(fieldId); onDismiss(); }}
-          className="ml-1 shrink-0 rounded-lg bg-red-500/15 px-2.5 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/25 hover:text-red-200 active:scale-95">
+        <button
+          type="button"
+          onClick={() => {
+            scrollToField(fieldId);
+            onDismiss();
+          }}
+          className="ml-1 shrink-0 rounded-lg bg-red-500/15 px-2.5 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/25 hover:text-red-200 active:scale-95"
+        >
           Jump ↓
         </button>
-        <button type="button" onClick={onDismiss}
-          className="ml-1 shrink-0 rounded-lg p-1 text-neutral-500 transition hover:bg-white/[0.08] hover:text-neutral-300" aria-label="Dismiss">
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="ml-1 shrink-0 rounded-lg p-1 text-neutral-500 transition hover:bg-white/[0.08] hover:text-neutral-300"
+          aria-label="Dismiss"
+        >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -176,7 +253,13 @@ function ValidationToast({ message, fieldId, onDismiss }: { message: string; fie
 
 // ── Full-page overlay states ──────────────────────────────────────────
 
-function CenteredOverlay({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+function CenteredOverlay({
+  embedded,
+  children,
+}: {
+  embedded: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[hsl(240,10%,3.9%)]">
       <FestivalBackground />
@@ -208,7 +291,8 @@ function LoginGate({ embedded }: { embedded: boolean }) {
         </div>
         <h2 className="text-2xl font-black text-white">Login Required</h2>
         <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-          You need to be logged in to submit your feedback. Please sign in with your student credentials.
+          You need to be logged in to submit your feedback. Please sign in with
+          your student credentials.
         </p>
         <a
           href="/login"
@@ -223,7 +307,15 @@ function LoginGate({ embedded }: { embedded: boolean }) {
 }
 
 /** Shown when this register number already submitted */
-function AlreadySubmitted({ name, registerNumber, embedded }: { name: string; registerNumber: string; embedded: boolean }) {
+function AlreadySubmitted({
+  name,
+  registerNumber,
+  embedded,
+}: {
+  name: string;
+  registerNumber: string;
+  embedded: boolean;
+}) {
   return (
     <CenteredOverlay embedded={embedded}>
       <motion.div
@@ -238,10 +330,14 @@ function AlreadySubmitted({ name, registerNumber, embedded }: { name: string; re
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
           Already Submitted
         </div>
-        <h2 className="text-2xl font-black text-white">You&apos;ve already responded!</h2>
+        <h2 className="text-2xl font-black text-white">
+          You&apos;ve already responded!
+        </h2>
         <p className="mt-3 text-sm leading-relaxed text-neutral-400">
           Feedback from <span className="font-semibold text-white">{name}</span>{" "}
-          <span className="font-mono text-xs text-neutral-500">({registerNumber})</span>{" "}
+          <span className="font-mono text-xs text-neutral-500">
+            ({registerNumber})
+          </span>{" "}
           has already been recorded. Each student can submit feedback only once.
         </p>
         <p className="mt-5 text-xs text-neutral-500">
@@ -253,13 +349,24 @@ function AlreadySubmitted({ name, registerNumber, embedded }: { name: string; re
 }
 
 /** Full success screen after submission */
-function SuccessScreen({ name, embedded }: { name: string; embedded: boolean }) {
+function SuccessScreen({
+  name,
+  embedded,
+}: {
+  name: string;
+  embedded: boolean;
+}) {
   return (
     <CenteredOverlay embedded={embedded}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.6, type: "spring", stiffness: 200, damping: 22 }}
+        transition={{
+          duration: 0.6,
+          type: "spring",
+          stiffness: 200,
+          damping: 22,
+        }}
         className="w-full max-w-md text-center"
       >
         {/* Animated checkmark ring */}
@@ -267,7 +374,12 @@ function SuccessScreen({ name, embedded }: { name: string; embedded: boolean }) 
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 180, damping: 18 }}
+            transition={{
+              delay: 0.2,
+              type: "spring",
+              stiffness: 180,
+              damping: 18,
+            }}
             className="absolute inset-0 rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/30"
           />
           <motion.div
@@ -299,7 +411,10 @@ function SuccessScreen({ name, embedded }: { name: string; embedded: boolean }) 
             Thank you, {name.split(" ")[0]}! 🎉
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-            Your feedback for <span className="font-semibold text-fuchsia-300">MASS 2K26</span> has been submitted successfully. It will help us make the next edition even better.
+            Your feedback for{" "}
+            <span className="font-semibold text-fuchsia-300">MASS 2K26</span>{" "}
+            has been submitted successfully. It will help us make the next
+            edition even better.
           </p>
           <p className="mt-6 text-xs text-neutral-600">
             You can close this page or explore the rest of the site.
@@ -312,14 +427,14 @@ function SuccessScreen({ name, embedded }: { name: string; embedded: boolean }) 
 
 // ── Page states ───────────────────────────────────────────────────────
 type PageState =
-  | "loading"           // Checking session + prior submission
-  | "not_logged_in"     // Must log in first
+  | "loading" // Checking session + prior submission
+  | "not_logged_in" // Must log in first
   | "already_submitted" // Already submitted
-  | "form"              // Normal — show the form
-  | "success";          // Just submitted
+  | "form" // Normal — show the form
+  | "success"; // Just submitted
 
 // ─────────────────────────────────────────────────────────────────────
-export default function FeedbackPage() {
+function FeedbackPageContent() {
   const searchParams = useSearchParams();
   const embedded = searchParams.get("embedded") === "1";
 
@@ -332,25 +447,36 @@ export default function FeedbackPage() {
   const [userName, setUserName] = useState("");
   const [userRegNum, setUserRegNum] = useState("");
   const [autoFilled, setAutoFilled] = useState(false);
-  const [decodedInfo, setDecodedInfo] = useState<{ year: string; department: string } | null>(null);
+  const [decodedInfo, setDecodedInfo] = useState<{
+    year: string;
+    department: string;
+  } | null>(null);
 
   // Validation toast + highlight
-  const [toast, setToast] = useState<{ message: string; fieldId: string } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    fieldId: string;
+  } | null>(null);
   const [highlightedField, setHighlightedField] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    },
+    [],
+  );
 
   // ── On mount: check session then check prior submission ──
   useEffect(() => {
     async function init() {
       try {
         // 1. Get session
-        const meRes = await fetch("/api/auth/me", { credentials: "same-origin" });
+        const meRes = await fetch("/api/auth/me", {
+          credentials: "same-origin",
+        });
         if (!meRes.ok) {
           setPageState("not_logged_in");
           return;
@@ -362,7 +488,9 @@ export default function FeedbackPage() {
         setUserRegNum(regNum);
 
         // 2. Check prior submission
-        const checkRes = await fetch("/api/feedback", { credentials: "same-origin" });
+        const checkRes = await fetch("/api/feedback", {
+          credentials: "same-origin",
+        });
         if (checkRes.ok) {
           const check = await checkRes.json();
           if (check.submitted) {
@@ -372,13 +500,18 @@ export default function FeedbackPage() {
         }
 
         // 3. Auto-fill form
-        setForm((prev) => ({ ...prev, register_number: regNum, student_name: name }));
+        setForm((prev) => ({
+          ...prev,
+          register_number: regNum,
+          student_name: name,
+        }));
         setAutoFilled(true);
 
         if (regNum) {
           const derived = deriveFromRegNumber(regNum);
           if (derived) setDecodedInfo(derived);
-          else if (me.department && me.year) setDecodedInfo({ department: me.department, year: me.year });
+          else if (me.department && me.year)
+            setDecodedInfo({ department: me.department, year: me.year });
         }
 
         setPageState("form");
@@ -391,16 +524,23 @@ export default function FeedbackPage() {
   }, []);
 
   const groupedSchema = useMemo(
-    () => SECTION_ORDER.map((section) => ({
-      section,
-      questions: FEEDBACK_TABLE_SCHEMA.filter((r) => r.section === section),
-    })),
+    () =>
+      SECTION_ORDER.map((section) => ({
+        section,
+        questions: FEEDBACK_TABLE_SCHEMA.filter((r) => r.section === section),
+      })),
     [],
   );
 
-  const updateField = <K extends keyof FeedbackFormData>(key: K, value: FeedbackFormData[K]) => {
+  const updateField = <K extends keyof FeedbackFormData>(
+    key: K,
+    value: FeedbackFormData[K],
+  ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
-    if (highlightedField === key) { setHighlightedField(null); setToast(null); }
+    if (highlightedField === key) {
+      setHighlightedField(null);
+      setToast(null);
+    }
   };
 
   const toggleImprovementArea = (value: string) => {
@@ -412,8 +552,12 @@ export default function FeedbackPage() {
           ? prev.improvement_areas.filter((i) => i !== value)
           : [...prev.improvement_areas, value],
       };
-      if (next.improvement_areas.length > 0 && highlightedField === "improvement_areas") {
-        setHighlightedField(null); setToast(null);
+      if (
+        next.improvement_areas.length > 0 &&
+        highlightedField === "improvement_areas"
+      ) {
+        setHighlightedField(null);
+        setToast(null);
       }
       return next;
     });
@@ -426,7 +570,10 @@ export default function FeedbackPage() {
     setToast({ message: row.question, fieldId: row.field });
     setTimeout(() => scrollToField(row.field), 80);
     toastTimerRef.current = setTimeout(() => setToast(null), 4000);
-    highlightTimerRef.current = setTimeout(() => setHighlightedField(null), 2500);
+    highlightTimerRef.current = setTimeout(
+      () => setHighlightedField(null),
+      2500,
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -434,8 +581,14 @@ export default function FeedbackPage() {
     setSubmitting(true);
     setApiError("");
 
-    const missing = FEEDBACK_TABLE_SCHEMA.find((row) => isFieldMissing(form, row));
-    if (missing) { showValidationError(missing); setSubmitting(false); return; }
+    const missing = FEEDBACK_TABLE_SCHEMA.find((row) =>
+      isFieldMissing(form, row),
+    );
+    if (missing) {
+      showValidationError(missing);
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/feedback", {
@@ -474,8 +627,18 @@ export default function FeedbackPage() {
   }
 
   if (pageState === "not_logged_in") return <LoginGate embedded={embedded} />;
-  if (pageState === "already_submitted") return <AlreadySubmitted name={userName} registerNumber={userRegNum} embedded={embedded} />;
-  if (pageState === "success") return <SuccessScreen name={userName || form.student_name} embedded={embedded} />;
+  if (pageState === "already_submitted")
+    return (
+      <AlreadySubmitted
+        name={userName}
+        registerNumber={userRegNum}
+        embedded={embedded}
+      />
+    );
+  if (pageState === "success")
+    return (
+      <SuccessScreen name={userName || form.student_name} embedded={embedded} />
+    );
 
   // ── Main form ──────────────────────────────────────────────────────
   return (
@@ -490,12 +653,17 @@ export default function FeedbackPage() {
             key={toast.fieldId}
             message={toast.message}
             fieldId={toast.fieldId}
-            onDismiss={() => { setToast(null); if (toastTimerRef.current) clearTimeout(toastTimerRef.current); }}
+            onDismiss={() => {
+              setToast(null);
+              if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+            }}
           />
         )}
       </AnimatePresence>
 
-      <section className={`relative px-4 pb-20 sm:px-6 ${embedded ? "pt-6 md:pt-8" : "pt-24 md:pt-32"}`}>
+      <section
+        className={`relative px-4 pb-20 sm:px-6 ${embedded ? "pt-6 md:pt-8" : "pt-24 md:pt-32"}`}
+      >
         {/* Glow orbs */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-10 top-20 h-72 w-72 rounded-full bg-fuchsia-500/[0.07] blur-[100px]" />
@@ -520,7 +688,8 @@ export default function FeedbackPage() {
               </h1>
             </div>
             <p className="max-w-3xl text-sm leading-relaxed text-neutral-400 sm:text-base">
-              Measure execution quality, logistics, engagement, and improvement areas. Your feedback directly shapes the next MASS event.
+              Measure execution quality, logistics, engagement, and improvement
+              areas. Your feedback directly shapes the next MASS event.
             </p>
           </motion.div>
 
@@ -546,13 +715,22 @@ export default function FeedbackPage() {
               <CardHeader className="border-b border-white/[0.06] bg-white/[0.02]">
                 <CardTitle className="text-white">Feedback Form</CardTitle>
                 <CardDescription className="text-neutral-500">
-                  All fields are mandatory. Improvement areas support multiple selection.
+                  All fields are mandatory. Improvement areas support multiple
+                  selection.
                 </CardDescription>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-300">High</span>
-                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-sky-300">Good</span>
-                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-amber-300">Neutral</span>
-                  <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-rose-300">Low</span>
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-emerald-300">
+                    High
+                  </span>
+                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-sky-300">
+                    Good
+                  </span>
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-amber-300">
+                    Neutral
+                  </span>
+                  <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-rose-300">
+                    Low
+                  </span>
                 </div>
               </CardHeader>
 
@@ -563,7 +741,10 @@ export default function FeedbackPage() {
                       key={section.section}
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.35, delay: 0.15 + sectionIndex * 0.05 }}
+                      transition={{
+                        duration: 0.35,
+                        delay: 0.15 + sectionIndex * 0.05,
+                      }}
                       className="space-y-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-5"
                     >
                       <h2 className="flex items-center gap-2 text-base font-bold text-white sm:text-lg">
@@ -572,25 +753,30 @@ export default function FeedbackPage() {
                       </h2>
 
                       {/* Auto-fill session banner */}
-                      {section.section === "Participant Details" && autoFilled && (
-                        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-2.5">
-                          <UserCheck className="h-4 w-4 shrink-0 text-emerald-400" />
-                          <p className="text-xs font-medium text-emerald-300">
-                            Auto-filled from your login session
-                            {decodedInfo && (
-                              <span className="ml-1.5 text-emerald-400/80">
-                                · {decodedInfo.department} · Year {decodedInfo.year}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      )}
+                      {section.section === "Participant Details" &&
+                        autoFilled && (
+                          <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.08] px-3.5 py-2.5">
+                            <UserCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+                            <p className="text-xs font-medium text-emerald-300">
+                              Auto-filled from your login session
+                              {decodedInfo && (
+                                <span className="ml-1.5 text-emerald-400/80">
+                                  · {decodedInfo.department} · Year{" "}
+                                  {decodedInfo.year}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
 
                       <div className="space-y-5">
                         {section.questions.map((question) => {
                           const field = question.field;
                           const fieldValue = form[field];
-                          const isAutoFilledField = autoFilled && (field === "register_number" || field === "student_name");
+                          const isAutoFilledField =
+                            autoFilled &&
+                            (field === "register_number" ||
+                              field === "student_name");
                           const isHighlighted = highlightedField === field;
 
                           return (
@@ -598,13 +784,17 @@ export default function FeedbackPage() {
                               key={field}
                               id={`field-${field}`}
                               className={`space-y-2 scroll-mt-28 rounded-xl transition-all duration-300 ${
-                                isHighlighted ? "ring-2 ring-red-500/50 ring-offset-[3px] ring-offset-transparent -mx-1 px-1 py-1" : ""
+                                isHighlighted
+                                  ? "ring-2 ring-red-500/50 ring-offset-[3px] ring-offset-transparent -mx-1 px-1 py-1"
+                                  : ""
                               }`}
                             >
                               <Label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-300">
                                 {question.question}
                                 <span className="text-red-400/80">*</span>
-                                {isAutoFilledField && <Lock className="ml-1 h-3 w-3 text-emerald-400/60" />}
+                                {isAutoFilledField && (
+                                  <Lock className="ml-1 h-3 w-3 text-emerald-400/60" />
+                                )}
                               </Label>
 
                               {isHighlighted && (
@@ -619,77 +809,123 @@ export default function FeedbackPage() {
                               )}
 
                               {/* TEXT */}
-                              {question.type === "text" && typeof fieldValue === "string" && (
-                                <div className="relative">
-                                  <Input
-                                    value={fieldValue}
-                                    onChange={(e) => { if (isAutoFilledField) return; updateField(field, e.target.value as FeedbackFormData[typeof field]); }}
-                                    readOnly={isAutoFilledField}
-                                    placeholder={field === "register_number" ? "e.g. 712525104001" : "Enter your name"}
-                                    className={`text-white placeholder:text-neutral-600 focus:border-fuchsia-500/50 focus:ring-fuchsia-500/20 transition-all duration-300 ${
-                                      isAutoFilledField
-                                        ? "cursor-not-allowed bg-emerald-500/[0.06] border-emerald-500/20 text-emerald-200"
-                                        : isHighlighted
-                                        ? "border-red-500/50 bg-red-500/[0.06]"
-                                        : "border-white/[0.08] bg-white/[0.05]"
-                                    }`}
-                                  />
-                                  {field === "register_number" && !autoFilled && fieldValue.length === 12 && (() => {
-                                    const d = deriveFromRegNumber(fieldValue);
-                                    if (!d) return null;
-                                    return (
-                                      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-950/30 px-3 py-1.5 text-xs text-emerald-300">
-                                        <Sparkles className="h-3 w-3 shrink-0" />
-                                        Detected: <strong>{d.department}</strong> · Year <strong>{d.year}</strong>
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              )}
+                              {question.type === "text" &&
+                                typeof fieldValue === "string" && (
+                                  <div className="relative">
+                                    <Input
+                                      value={fieldValue}
+                                      onChange={(e) => {
+                                        if (isAutoFilledField) return;
+                                        updateField(
+                                          field,
+                                          e.target
+                                            .value as FeedbackFormData[typeof field],
+                                        );
+                                      }}
+                                      readOnly={isAutoFilledField}
+                                      placeholder={
+                                        field === "register_number"
+                                          ? "e.g. 712525104001"
+                                          : "Enter your name"
+                                      }
+                                      className={`text-white placeholder:text-neutral-600 focus:border-fuchsia-500/50 focus:ring-fuchsia-500/20 transition-all duration-300 ${
+                                        isAutoFilledField
+                                          ? "cursor-not-allowed bg-emerald-500/[0.06] border-emerald-500/20 text-emerald-200"
+                                          : isHighlighted
+                                            ? "border-red-500/50 bg-red-500/[0.06]"
+                                            : "border-white/[0.08] bg-white/[0.05]"
+                                      }`}
+                                    />
+                                    {field === "register_number" &&
+                                      !autoFilled &&
+                                      fieldValue.length === 12 &&
+                                      (() => {
+                                        const d =
+                                          deriveFromRegNumber(fieldValue);
+                                        if (!d) return null;
+                                        return (
+                                          <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-950/30 px-3 py-1.5 text-xs text-emerald-300">
+                                            <Sparkles className="h-3 w-3 shrink-0" />
+                                            Detected:{" "}
+                                            <strong>{d.department}</strong> ·
+                                            Year <strong>{d.year}</strong>
+                                          </div>
+                                        );
+                                      })()}
+                                  </div>
+                                )}
 
                               {/* SINGLE */}
-                              {question.type === "single" && typeof fieldValue === "string" && question.options && (
-                                <OptionGrid
-                                  field={field}
-                                  options={question.options}
-                                  value={fieldValue}
-                                  onChange={(v) => updateField(field, v as FeedbackFormData[typeof field])}
-                                  highlighted={isHighlighted}
-                                />
-                              )}
+                              {question.type === "single" &&
+                                typeof fieldValue === "string" &&
+                                question.options && (
+                                  <OptionGrid
+                                    field={field}
+                                    options={question.options}
+                                    value={fieldValue}
+                                    onChange={(v) =>
+                                      updateField(
+                                        field,
+                                        v as FeedbackFormData[typeof field],
+                                      )
+                                    }
+                                    highlighted={isHighlighted}
+                                  />
+                                )}
 
                               {/* MULTI */}
-                              {question.type === "multi" && Array.isArray(fieldValue) && question.options && (
-                                <div className={`grid gap-2 sm:grid-cols-2 rounded-xl transition-all duration-500 ${isHighlighted ? "ring-2 ring-red-500/50 ring-offset-2 ring-offset-transparent p-1" : ""}`}>
-                                  {question.options.map((opt) => {
-                                    const checked = fieldValue.includes(opt.value);
-                                    return (
-                                      <label key={opt.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 ${
-                                        checked
-                                          ? "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200"
-                                          : "border-white/[0.08] bg-white/[0.04] text-neutral-300 hover:border-fuchsia-400/30 hover:bg-white/[0.07]"
-                                      }`}>
-                                        <Checkbox checked={checked} onCheckedChange={() => toggleImprovementArea(opt.value)} />
-                                        <span>{opt.label}</span>
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                              {question.type === "multi" &&
+                                Array.isArray(fieldValue) &&
+                                question.options && (
+                                  <div
+                                    className={`grid gap-2 sm:grid-cols-2 rounded-xl transition-all duration-500 ${isHighlighted ? "ring-2 ring-red-500/50 ring-offset-2 ring-offset-transparent p-1" : ""}`}
+                                  >
+                                    {question.options.map((opt) => {
+                                      const checked = fieldValue.includes(
+                                        opt.value,
+                                      );
+                                      return (
+                                        <label
+                                          key={opt.value}
+                                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 ${
+                                            checked
+                                              ? "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200"
+                                              : "border-white/[0.08] bg-white/[0.04] text-neutral-300 hover:border-fuchsia-400/30 hover:bg-white/[0.07]"
+                                          }`}
+                                        >
+                                          <Checkbox
+                                            checked={checked}
+                                            onCheckedChange={() =>
+                                              toggleImprovementArea(opt.value)
+                                            }
+                                          />
+                                          <span>{opt.label}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
 
                               {/* PARAGRAPH */}
-                              {question.type === "paragraph" && typeof fieldValue === "string" && (
-                                <Textarea
-                                  value={fieldValue}
-                                  onChange={(e) => updateField(field, e.target.value as FeedbackFormData[typeof field])}
-                                  placeholder="Write your response"
-                                  className={`min-h-24 text-white placeholder:text-neutral-600 focus:ring-fuchsia-500/20 transition-all duration-300 ${
-                                    isHighlighted
-                                      ? "border-red-500/50 bg-red-500/[0.06] focus:border-red-400/50"
-                                      : "border-white/[0.08] bg-white/[0.05] focus:border-fuchsia-500/50"
-                                  }`}
-                                />
-                              )}
+                              {question.type === "paragraph" &&
+                                typeof fieldValue === "string" && (
+                                  <Textarea
+                                    value={fieldValue}
+                                    onChange={(e) =>
+                                      updateField(
+                                        field,
+                                        e.target
+                                          .value as FeedbackFormData[typeof field],
+                                      )
+                                    }
+                                    placeholder="Write your response"
+                                    className={`min-h-24 text-white placeholder:text-neutral-600 focus:ring-fuchsia-500/20 transition-all duration-300 ${
+                                      isHighlighted
+                                        ? "border-red-500/50 bg-red-500/[0.06] focus:border-red-400/50"
+                                        : "border-white/[0.08] bg-white/[0.05] focus:border-fuchsia-500/50"
+                                    }`}
+                                  />
+                                )}
                             </div>
                           );
                         })}
@@ -705,13 +941,30 @@ export default function FeedbackPage() {
                   >
                     {submitting ? (
                       <span className="flex items-center gap-2">
-                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        <svg
+                          className="h-4 w-4 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
                         </svg>
                         Submitting…
                       </span>
-                    ) : "Submit Feedback"}
+                    ) : (
+                      "Submit Feedback"
+                    )}
                   </Button>
                 </form>
               </CardContent>
@@ -722,5 +975,24 @@ export default function FeedbackPage() {
 
       {!embedded && <Footer />}
     </main>
+  );
+}
+
+function FeedbackPageFallback() {
+  return (
+    <main className="relative flex min-h-screen items-center justify-center bg-[hsl(240,10%,3.9%)]">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-fuchsia-400" />
+        <p className="text-sm text-neutral-500">Loading feedback form...</p>
+      </div>
+    </main>
+  );
+}
+
+export default function FeedbackPage() {
+  return (
+    <Suspense fallback={<FeedbackPageFallback />}>
+      <FeedbackPageContent />
+    </Suspense>
   );
 }

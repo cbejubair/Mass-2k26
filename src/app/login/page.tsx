@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { Suspense, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -69,7 +69,7 @@ const DASHBOARD_PATHS: Record<string, string> = {
   student: "/dashboard/student",
 };
 
-export default function LoginPage() {
+function LoginPageContent() {
   const searchParams = useSearchParams();
 
   // Student state
@@ -784,5 +784,24 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function LoginPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f]">
+      <div className="text-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-400 mx-auto" />
+        <p className="text-sm text-muted-foreground">Loading login...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
