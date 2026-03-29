@@ -5,8 +5,10 @@ import * as XLSX from "xlsx";
 import {
   BarChart3,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Download,
+  Lightbulb,
   Loader2,
   MessageSquareHeart,
   Search,
@@ -31,11 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  FEEDBACK_OPTIONS,
-  FEEDBACK_TABLE_SCHEMA,
-  type FeedbackSchemaRow,
-} from "@/lib/feedback-schema";
+import { FEEDBACK_OPTIONS, FEEDBACK_TABLE_SCHEMA } from "@/lib/feedback-schema";
 
 interface FeedbackEntry {
   id: string;
@@ -82,6 +80,106 @@ type RowStat = {
   count: number;
   percentage: number;
 };
+
+type ThemeStat = {
+  keyword: string;
+  count: number;
+};
+
+type FeedbackEntryWithMeta = FeedbackEntry & {
+  derivedYear: string;
+  derivedDepartment: string;
+};
+
+const ANALYTICS_SECTIONS = Array.from(
+  new Set(
+    FEEDBACK_TABLE_SCHEMA.filter(
+      (row) => row.type === "single" || row.type === "multi",
+    ).map((row) => row.section),
+  ),
+);
+
+const THEME_STOP_WORDS = new Set([
+  "about",
+  "after",
+  "again",
+  "better",
+  "could",
+  "during",
+  "event",
+  "events",
+  "every",
+  "have",
+  "improve",
+  "improved",
+  "improvement",
+  "improvements",
+  "mass",
+  "more",
+  "most",
+  "next",
+  "should",
+  "some",
+  "that",
+  "their",
+  "there",
+  "these",
+  "this",
+  "very",
+  "with",
+  "year",
+]);
+
+const YEAR_CODE_MAP: Record<string, string> = {
+  "22": "IV",
+  "23": "III",
+  "24": "II",
+  "25": "I",
+};
+
+const DEPT_CODE_MAP: Record<string, string> = {
+  "104": "CSE",
+  "205": "IT",
+  "243": "AIDS",
+  "148": "AIML",
+  "121": "BME",
+  "225": "AGRI",
+  "106": "ECE",
+  "114": "MECH",
+};
+
+function deriveYearDepartment(registerNumber: string): {
+  year: string;
+  department: string;
+} {
+  const normalized = registerNumber.trim().toUpperCase();
+
+  if (/^7125\d{8}$/.test(normalized)) {
+    const year = YEAR_CODE_MAP[normalized.slice(4, 6)] || "Unknown";
+    const department = DEPT_CODE_MAP[normalized.slice(6, 9)] || "Unknown";
+    return { year, department };
+  }
+
+  const yearCode = normalized.slice(0, 2);
+  const year = YEAR_CODE_MAP[yearCode] || "Unknown";
+
+  const deptPatterns: Array<[RegExp, string]> = [
+    [/AI\s*&?\s*DS|AIDS|AID\b/, "AIDS"],
+    [/AI\s*&?\s*ML|AIML/, "AIML"],
+    [/\bCSE\b|\bCS\b/, "CSE"],
+    [/\bECE\b|\bEC\b/, "ECE"],
+    [/\bMECH\b|\bME\b/, "MECH"],
+    [/\bBME\b|\bBM\b/, "BME"],
+    [/\bAGRI\b|\bAG\b/, "AGRI"],
+    [/\bIT\b/, "IT"],
+  ];
+
+  const matchedDepartment =
+    deptPatterns.find(([pattern]) => pattern.test(normalized))?.[1] ||
+    "Unknown";
+
+  return { year, department: matchedDepartment };
+}
 
 function labelFor(
   options: readonly { value: string; label: string }[],
@@ -135,13 +233,43 @@ function statPct(value: number, total: number): number {
   return Math.round((value / total) * 100);
 }
 
+function extractTopThemes(texts: string[], limit = 8): ThemeStat[] {
+  const counts: Record<string, number> = {};
+
+  texts.forEach((text) => {
+    const normalized = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+    const words = normalized.split(/\s+/).filter(Boolean);
+
+    words.forEach((word) => {
+      if (word.length < 4) return;
+      if (/^\d+$/.test(word)) return;
+      if (THEME_STOP_WORDS.has(word)) return;
+      counts[word] = (counts[word] || 0) + 1;
+    });
+  });
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([keyword, count]) => ({ keyword, count }));
+}
+
 export default function AdminFeedbackPage() {
   const [items, setItems] = useState<FeedbackEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState<FilterLevel>("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [showTable, setShowTable] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
+  >(() =>
+    Object.fromEntries(
+      ANALYTICS_SECTIONS.map((section, i) => [section, i === 0]),
+    ),
+  );
 
   useEffect(() => {
     fetch("/api/admin/feedback")
@@ -160,11 +288,27 @@ export default function AdminFeedbackPage() {
   }, []);
 
   const filtered = useMemo(() => {
+    const itemsWithMeta: FeedbackEntryWithMeta[] = items.map((entry) => {
+      const derived = deriveYearDepartment(entry.register_number || "");
+      return {
+        ...entry,
+        derivedYear: derived.year,
+        derivedDepartment: derived.department,
+      };
+    });
+
     const q = search.trim().toLowerCase();
 
-    return items.filter((entry) => {
+    return itemsWithMeta.filter((entry) => {
       const matchesRating =
         ratingFilter === "all" || entry.overall_event_rating === ratingFilter;
+
+      const matchesYear =
+        yearFilter === "all" || entry.derivedYear === yearFilter;
+
+      const matchesDepartment =
+        departmentFilter === "all" ||
+        entry.derivedDepartment === departmentFilter;
 
       const matchesSearch =
         !q ||
@@ -174,30 +318,29 @@ export default function AdminFeedbackPage() {
         entry.improve_next_time.toLowerCase().includes(q) ||
         entry.suggestions_next_year.toLowerCase().includes(q);
 
-      return matchesRating && matchesSearch;
+      return matchesRating && matchesYear && matchesDepartment && matchesSearch;
     });
-  }, [items, ratingFilter, search]);
+  }, [items, ratingFilter, yearFilter, departmentFilter, search]);
 
-  const singleRows = useMemo(
-    () => FEEDBACK_TABLE_SCHEMA.filter((row) => row.type === "single"),
-    [],
-  );
+  const yearOptions = useMemo(() => {
+    const set = new Set(
+      items.map((entry) => deriveYearDepartment(entry.register_number).year),
+    );
+    const order = ["I", "II", "III", "IV", "Unknown"];
+    return Array.from(set).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  }, [items]);
 
-  const multiRows = useMemo(
-    () => FEEDBACK_TABLE_SCHEMA.filter((row) => row.type === "multi"),
-    [],
-  );
-
-  const analyticsBySection = useMemo(() => {
-    const sections = Array.from(
-      new Set(
-        FEEDBACK_TABLE_SCHEMA.filter(
-          (row) => row.type === "single" || row.type === "multi",
-        ).map((row) => row.section),
+  const departmentOptions = useMemo(() => {
+    const set = new Set(
+      items.map(
+        (entry) => deriveYearDepartment(entry.register_number).department,
       ),
     );
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [items]);
 
-    return sections.map((section) => {
+  const analyticsBySection = useMemo(() => {
+    return ANALYTICS_SECTIONS.map((section) => {
       const rows = FEEDBACK_TABLE_SCHEMA.filter(
         (row) =>
           row.section === section &&
@@ -206,24 +349,21 @@ export default function AdminFeedbackPage() {
 
       const rowStats = rows.map((row) => {
         const options = row.options || [];
+        const field = row.field as keyof FeedbackEntry;
 
         const stats: RowStat[] = options.map((option) => {
-          const field = row.field as keyof FeedbackEntry;
-
           const count = filtered.reduce((acc, entry) => {
             const value = entry[field];
 
             if (row.type === "multi") {
-              if (Array.isArray(value) && value.includes(option.value)) {
-                return acc + 1;
-              }
-              return acc;
+              return Array.isArray(value) && value.includes(option.value)
+                ? acc + 1
+                : acc;
             }
 
-            if (typeof value === "string" && value === option.value) {
-              return acc + 1;
-            }
-            return acc;
+            return typeof value === "string" && value === option.value
+              ? acc + 1
+              : acc;
           }, 0);
 
           return {
@@ -234,17 +374,30 @@ export default function AdminFeedbackPage() {
           };
         });
 
-        return {
-          row,
-          stats,
-        };
+        const topStat =
+          stats.length > 0
+            ? stats.reduce((best, current) =>
+                current.count > best.count ? current : best,
+              )
+            : null;
+
+        return { row, stats, topStat };
       });
 
-      return {
-        section,
-        rowStats,
-      };
+      return { section, rowStats };
     });
+  }, [filtered]);
+
+  const textInsights = useMemo(() => {
+    return {
+      likedThemes: extractTopThemes(filtered.map((item) => item.liked_most)),
+      improveThemes: extractTopThemes(
+        filtered.map((item) => item.improve_next_time),
+      ),
+      suggestionThemes: extractTopThemes(
+        filtered.map((item) => item.suggestions_next_year),
+      ),
+    };
   }, [filtered]);
 
   const stats = useMemo(() => {
@@ -261,7 +414,6 @@ export default function AdminFeedbackPage() {
     const low = filtered.filter((e) =>
       ["poor", "very_poor"].includes(e.overall_event_rating),
     ).length;
-
     const volunteerYes = filtered.filter(
       (e) => e.volunteer_next_event === "yes",
     ).length;
@@ -276,6 +428,10 @@ export default function AdminFeedbackPage() {
       volunteerPct: statPct(volunteerYes, total),
     };
   }, [filtered]);
+
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const exportExcel = () => {
     const rows = filtered.map((entry, index) => ({
@@ -398,8 +554,7 @@ export default function AdminFeedbackPage() {
               Feedback Analytics Dashboard
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Mobile-friendly insights for all feedback questions. Open detailed
-              table only when required.
+              Question trends, collapsible sections, and text insight themes.
             </p>
           </div>
 
@@ -477,7 +632,7 @@ export default function AdminFeedbackPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <Select
+            {/* <Select
               value={ratingFilter}
               onValueChange={(value) => setRatingFilter(value as FilterLevel)}
             >
@@ -492,14 +647,50 @@ export default function AdminFeedbackPage() {
                 <SelectItem value="poor">Poor</SelectItem>
                 <SelectItem value="very_poor">Very Poor</SelectItem>
               </SelectContent>
+            </Select> */}
+
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="Filter by year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {yearOptions.map((year) => (
+                  <SelectItem key={year} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
 
-            {(search || ratingFilter !== "all") && (
+            <Select
+              value={departmentFilter}
+              onValueChange={setDepartmentFilter}
+            >
+              <SelectTrigger className="w-full sm:w-[190px]">
+                <SelectValue placeholder="Filter by department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departmentOptions.map((department) => (
+                  <SelectItem key={department} value={department}>
+                    {department}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {(search ||
+              ratingFilter !== "all" ||
+              yearFilter !== "all" ||
+              departmentFilter !== "all") && (
               <Button
                 variant="ghost"
                 onClick={() => {
                   setSearch("");
                   setRatingFilter("all");
+                  setYearFilter("all");
+                  setDepartmentFilter("all");
                 }}
                 className="w-full sm:w-auto"
               >
@@ -531,45 +722,141 @@ export default function AdminFeedbackPage() {
               key={section.section}
               className="rounded-2xl border border-border/80 bg-card/40 p-4 sm:p-5"
             >
-              <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
-                <BarChart3 className="h-4 w-4 text-fuchsia-400" />
-                {section.section}
-              </h2>
+              <button
+                type="button"
+                className="w-full flex items-center justify-between gap-3"
+                onClick={() => toggleSection(section.section)}
+              >
+                <h2 className="text-left text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-fuchsia-400" />
+                  {section.section}
+                  <Badge variant="outline" className="ml-1">
+                    {section.rowStats.length} questions
+                  </Badge>
+                </h2>
+                {expandedSections[section.section] ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {section.rowStats.map(({ row, stats }) => (
-                  <div
-                    key={row.field}
-                    className="rounded-xl border border-border/70 bg-background/40 p-4"
-                  >
-                    <p className="text-sm font-semibold mb-3">{row.question}</p>
-                    <div className="space-y-2.5">
-                      {stats.map((stat) => (
-                        <div key={stat.value}>
-                          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm mb-1">
-                            <span className="text-muted-foreground">
-                              {stat.label}
-                            </span>
-                            <span className="font-medium">
-                              {stat.count} ({stat.percentage}%)
-                            </span>
+              {expandedSections[section.section] && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+                  {section.rowStats.map(({ row, stats, topStat }) => (
+                    <div
+                      key={row.field}
+                      className="rounded-xl border border-border/70 bg-background/40 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <p className="text-sm font-semibold">{row.question}</p>
+                        {topStat && topStat.count > 0 ? (
+                          <Badge className="bg-fuchsia-500/15 border-fuchsia-500/30 text-fuchsia-200 whitespace-nowrap">
+                            Top: {topStat.label} {topStat.percentage}%
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">No responses</Badge>
+                        )}
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {stats.map((stat) => (
+                          <div key={stat.value}>
+                            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm mb-1">
+                              <span className="text-muted-foreground">
+                                {stat.label}
+                              </span>
+                              <span className="font-medium">
+                                {stat.count} ({stat.percentage}%)
+                              </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${barClassForOption(
+                                  stat.value,
+                                )}`}
+                                style={{ width: `${stat.percentage}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${barClassForOption(
-                                stat.value,
-                              )}`}
-                              style={{ width: `${stat.percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
+
+          <div className="rounded-2xl border border-border/80 bg-card/40 p-4 sm:p-5">
+            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4">
+              <Lightbulb className="h-4 w-4 text-amber-400" />
+              Text Feedback Insights
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-border/70 bg-background/40 p-4">
+                <p className="text-sm font-semibold mb-3">
+                  What Students Liked
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {textInsights.likedThemes.length > 0 ? (
+                    textInsights.likedThemes.map((theme) => (
+                      <Badge key={`liked-${theme.keyword}`} variant="secondary">
+                        {theme.keyword} ({theme.count})
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No repeated themes yet.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-background/40 p-4">
+                <p className="text-sm font-semibold mb-3">Improvement Themes</p>
+                <div className="flex flex-wrap gap-2">
+                  {textInsights.improveThemes.length > 0 ? (
+                    textInsights.improveThemes.map((theme) => (
+                      <Badge
+                        key={`improve-${theme.keyword}`}
+                        variant="secondary"
+                      >
+                        {theme.keyword} ({theme.count})
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No repeated themes yet.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-background/40 p-4">
+                <p className="text-sm font-semibold mb-3">
+                  Next Year Suggestions
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {textInsights.suggestionThemes.length > 0 ? (
+                    textInsights.suggestionThemes.map((theme) => (
+                      <Badge
+                        key={`suggest-${theme.keyword}`}
+                        variant="secondary"
+                      >
+                        {theme.keyword} ({theme.count})
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      No repeated themes yet.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
