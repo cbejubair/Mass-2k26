@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   Card,
@@ -69,6 +70,8 @@ const DASHBOARD_PATHS: Record<string, string> = {
 };
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
+
   // Student state
   const [registerNumber, setRegisterNumber] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -92,6 +95,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+
+  const getPostLoginPath = useCallback(() => {
+    const next = searchParams.get("next") || "";
+    if (next.startsWith("/") && !next.startsWith("//")) {
+      return next;
+    }
+    return "";
+  }, [searchParams]);
 
   const handleStudentLogin = useCallback(
     async (e: React.FormEvent) => {
@@ -167,7 +178,8 @@ export default function LoginPage() {
         }
 
         setRedirecting(true);
-        window.location.href = DASHBOARD_PATHS.student;
+        const postLoginPath = getPostLoginPath();
+        window.location.href = postLoginPath || DASHBOARD_PATHS.student;
       } catch {
         setError("Network error. Please try again.");
         setLoading(false);
@@ -182,6 +194,7 @@ export default function LoginPage() {
       classSection,
       mobileNumber,
       photoFile,
+      getPostLoginPath,
     ],
   );
 
@@ -212,14 +225,18 @@ export default function LoginPage() {
         }
 
         setRedirecting(true);
-        const path = DASHBOARD_PATHS[data.user.role] || "/dashboard/admin";
+        const postLoginPath = getPostLoginPath();
+        const path =
+          postLoginPath ||
+          DASHBOARD_PATHS[data.user.role] ||
+          "/dashboard/admin";
         window.location.href = path;
       } catch {
         setError("Network error. Please try again.");
         setLoading(false);
       }
     },
-    [adminUsername, adminPassword],
+    [adminUsername, adminPassword, getPostLoginPath],
   );
 
   if (redirecting) {

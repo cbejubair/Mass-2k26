@@ -14,6 +14,7 @@ import {
   Disc3,
 } from "lucide-react";
 import Link from "next/link";
+import FeedbackPopup from "@/components/feedback/feedback-popup";
 
 interface ClassStats {
   totalStudents: number;
@@ -86,6 +87,9 @@ export default function CoordinatorDashboard() {
         <p className="text-muted-foreground text-sm mt-1">
           View and manage students within your assigned routing scope
         </p>
+        <div className="mt-3">
+          <FeedbackPopup storageKey="mass-feedback-dismissed-coordinator" />
+        </div>
         {classScope && (
           <div className="mt-2">
             <Badge variant="secondary">Scope: {classScope.label}</Badge>

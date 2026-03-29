@@ -119,7 +119,7 @@ export default function LiveStats() {
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-2">
-            MASS 2K26 <span className="text-fuchsia-400">by the Numbers</span>
+            MEGA MASS 2K26 <span className="text-fuchsia-400">by the Numbers</span>
           </h2>
           <p className="text-neutral-500 text-xs sm:text-sm max-w-md mx-auto">
             Real-time statistics updated every 30 seconds
@@ -130,7 +130,7 @@ export default function LiveStats() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
           {statConfig.map((cfg, index) => {
             const Icon = cfg.icon;
-            const value = stats ? stats[cfg.key] : 0;
+            const value = (stats ? stats[cfg.key] : 0)+25;
 
             return (
               <motion.div

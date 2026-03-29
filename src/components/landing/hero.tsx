@@ -7,7 +7,7 @@ import { SpecialText } from "@/components/ui/special-text";
 export default function DemoOne() {
   return (
     <div className="relative flex w-full flex-col items-center justify-center overflow-hidden pt-24 sm:pt-28">
-      <div
+      {/* <div
         className="absolute inset-0 z-0 opacity-20"
         style={{
           backgroundImage:
@@ -15,7 +15,7 @@ export default function DemoOne() {
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
-      />
+      /> */}
       <WebGLShader />
 
       <div className="relative z-10 mx-auto w-full max-w-3xl border border-[#27272a] p-2">
@@ -26,12 +26,12 @@ export default function DemoOne() {
                 className="!h-auto !leading-none text-[clamp(2rem,8vw,7rem)] font-extrabold tracking-tighter"
                 inView
               >
-                MASS 2k26
+                MEGA MASS
               </SpecialText>
             </h1>
           </div>
           <p className="px-6 text-center text-xs text-white/60 md:text-sm lg:text-lg">
-            Join PPG IT College for Mega Mass 2k26 — a day packed with
+            Join PPG IT College for MEGA MASS 2k26 — a day packed with
             electrifying performances, fun competitions, and unforgettable
             campus vibes.
           </p>
@@ -40,16 +40,18 @@ export default function DemoOne() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
               <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
             </span>
-            <p className="text-xs text-green-500">𝙈𝙀𝙂𝘼 𝙈𝘼𝙎𝙎 2𝙆26 𝙞𝙨 𝙇𝙤𝙖𝙙𝙞𝙣𝙜</p>
+            <p className="text-xs text-green-500">
+              𝙈𝙀𝙂𝘼 𝙈𝘼𝙎𝙎 2𝙆26 𝙞𝙨 Completed
+            </p>
           </div>
 
           <div className="flex justify-center">
             <LiquidButton
               className="rounded-full border text-white"
               size="xl"
-              onClick={() => window.location.href = "/login"}
+              onClick={() => (window.location.href = "/login?next=/feedback")}
             >
-              Login Now
+              Fill Feedback
             </LiquidButton>
           </div>
         </main>

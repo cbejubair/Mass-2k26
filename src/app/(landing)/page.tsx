@@ -144,19 +144,19 @@ export default function LandingPage() {
       <LiveStats />
 
       {/* ===================== Quick Links ===================== */}
-      <QuickLinks />
+      {/* <QuickLinks /> */}
 
       {/* ===================== About — TabCards ===================== */}
       <TabCards />
 
       {/* ===================== Schedule ===================== */}
-      <ScrollCardSec />
+      {/* <ScrollCardSec /> */}
 
       {/* ===================== Departments ===================== */}
       <DeptMarquee />
 
       {/* ===================== Coordinators ===================== */}
-      <CoordinatorsSection />
+      {/* <CoordinatorsSection /> */}
 
       {/* ===================== FAQ ===================== */}
       {/* <FAQSection /> */}

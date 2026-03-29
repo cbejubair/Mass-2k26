@@ -99,6 +99,12 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL(getDashboard(role), req.url));
   }
 
+  if (pathname.startsWith("/feedback")) {
+    if (role !== "student" && !COORDINATOR_ROLES.has(role as any)) {
+      return NextResponse.redirect(new URL(getDashboard(role), req.url));
+    }
+  }
+
   return NextResponse.next();
 }
 

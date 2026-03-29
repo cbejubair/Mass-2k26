@@ -25,6 +25,7 @@ import {
   Settings,
   Disc3,
   Store,
+  MessageSquareHeart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { UserRole } from "@/lib/types";
@@ -57,6 +58,11 @@ const menuItems: Partial<Record<UserRole, MenuItem[]>> = {
     { label: "QR Scanner", path: "/dashboard/admin/scanner", icon: ScanLine },
     { label: "Agenda", path: "/dashboard/admin/agenda", icon: Calendar },
     { label: "Survey", path: "/dashboard/admin/survey", icon: FileText },
+    {
+      label: "Feedback",
+      path: "/dashboard/admin/feedback",
+      icon: MessageSquareHeart,
+    },
     { label: "Stalls", path: "/dashboard/admin/stalls", icon: Store },
     { label: "DJ Poll", path: "/dashboard/admin/poll", icon: Disc3 },
     { label: "Students", path: "/dashboard/admin/students", icon: Users },

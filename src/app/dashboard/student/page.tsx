@@ -26,6 +26,7 @@ import {
   Disc3,
 } from "lucide-react";
 import Link from "next/link";
+import FeedbackPopup from "@/components/feedback/feedback-popup";
 
 interface DashboardData {
   registration: { support_status: boolean; remarks: string } | null;
@@ -207,6 +208,9 @@ export default function StudentDashboard() {
         <p className="text-muted-foreground text-sm mt-1">
           Welcome to MASS 2K26 — track your registration progress below.
         </p>
+        <div className="mt-3">
+          <FeedbackPopup storageKey="mass-feedback-dismissed-student" />
+        </div>
         {/* <div className="mt-3">
           <Button
             size="sm"

@@ -10,11 +10,11 @@ const navLinks = [
   { name: "Home", href: "/#home" },
   { name: "About", href: "/#about" },
   { name: "Events", href: "/events" },
-  { name: "Timeline", href: "/#events" },
+  // { name: "Timeline", href: "/#events" },
   { name: "Coordinators", href: "/#coordinators" },
   { name: "Rules", href: "/rules" },
-  { name: "Stall", href: "/stall-form" },
-  { name: "FAQ", href: "/faq" },
+  // { name: "Stall", href: "/stall-form" },
+  // { name: "FAQ", href: "/faq" },
 ];
 
 export default function Navbar() {
